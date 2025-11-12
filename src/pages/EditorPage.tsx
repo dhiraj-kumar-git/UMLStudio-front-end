@@ -5,6 +5,8 @@ import { CanvasModel } from "../models/CanvasModel";
 import type { DiagramComponent } from "../models/DiagramComponent";
 import DiagramAssociation from "../models/DiagramAssociation";
 import UseCaseAssociation from "../models/UseCaseAssociation";
+import ClassAssociation from "../models/ClassAssociation";
+import ActorUseCaseAssociation from "../models/ActorUseCaseAssociation";
 import { LayoutManager } from "../models/LayoutManager";
 import CanvasController from "../controller/CanvasController";
 
@@ -78,14 +80,38 @@ export const EditorPage: React.FC = () => {
       const src = components.find((p) => (p as any).id === anyc.sourceId);
       const tgt = components.find((p) => (p as any).id === anyc.targetId);
       if (src && tgt) {
-        const assoc = new UseCaseAssociation(src, tgt, anyc.assocType ?? "includes");
+          let assoc: DiagramAssociation | null = null;
+          const kind = anyc.assocKind ?? "usecase";
+          if (kind === "usecase") {
+            assoc = new UseCaseAssociation(src, tgt, anyc.assocType ?? "includes");
+          } else if (kind === "actor-usecase") {
+            assoc = new ActorUseCaseAssociation(src, tgt);
+        } else if (kind === "class-assoc") {
+            const csRaw = anyc.cardinalitySource;
+            const ctRaw = anyc.cardinalityTarget;
+            const cs = csRaw !== undefined && csRaw !== null && csRaw !== "" ? Number(csRaw) : undefined;
+            const ct = ctRaw !== undefined && ctRaw !== null && ctRaw !== "" ? Number(ctRaw) : undefined;
+            // If realization, ensure source is interface
+            if ((anyc.classAssocKind === "realization") && ((src as any).type !== "interface")) {
+              try {
+                // eslint-disable-next-line no-alert
+                alert("Realization associations require an Interface as the source. Please select an Interface component as the source.");
+              } catch {}
+            } else {
+              assoc = new ClassAssociation(src, tgt, anyc.classAssocKind ?? "association", anyc.assocName, cs, ct);
+            }
+          } else {
+            assoc = new UseCaseAssociation(src, tgt, anyc.assocType ?? "includes");
+          }
         // Use functional update so we can compute offsets on the new array before setting state
-        setAssociations((s) => {
-          const next = [...s, assoc];
-          // assign symmetric offsets for all pairs so parallel edges are spaced
-          LayoutManager.assignOffsetsForAll(next);
-          return next;
-        });
+          if (assoc) {
+            setAssociations((s) => {
+              const next = [...s, assoc as DiagramAssociation];
+              // assign symmetric offsets for all pairs so parallel edges are spaced
+              LayoutManager.assignOffsetsForAll(next);
+              return next;
+            });
+          }
       }
       return;
     }

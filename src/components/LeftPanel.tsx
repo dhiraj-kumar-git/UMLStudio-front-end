@@ -5,6 +5,7 @@ import { ActorComponent } from "../models/ActorComponent";
 import type { DiagramComponent } from "../models/DiagramComponent";
 import type DiagramAssociation from "../models/DiagramAssociation";
 import { UseCaseComponent } from "../models/UseCaseComponent";
+import InterfaceComponent from "../models/InterfaceComponent";
 import type { UseCaseAssocType } from "../models/UseCaseAssociation";
 import SystemBoundary from "../models/SystemBoundary";
 import ClassComponent from "../models/ClassComponent";
@@ -20,8 +21,13 @@ type Props = {
 
 export const LeftPanel: React.FC<Props> = ({ canvasModel, existing = [], onAdd, selected, onUpdateComponent, onUpdateAssociation }) => {
   const [name, setName] = useState("Actor");
-  const [mode, setMode] = useState<"actor" | "usecase" | "assoc" | "system" | "class">("actor");
+  const [mode, setMode] = useState<"actor" | "usecase" | "assoc" | "system" | "class" | "interface">("actor");
   const [assocType, setAssocType] = useState<UseCaseAssocType>("includes");
+  const [assocKind, setAssocKind] = useState<"usecase" | "actor-usecase" | "class-assoc">("usecase");
+  const [classAssocKind, setClassAssocKind] = useState<"association" | "aggregation" | "composition" | "generalization" | "realization">("association");
+    const [assocNameField, setAssocNameField] = useState("");
+    const [cardinalitySource, setCardinalitySource] = useState<string>("");
+    const [cardinalityTarget, setCardinalityTarget] = useState<string>("");
   const [assocSource, setAssocSource] = useState<string | null>(null);
   const [assocTarget, setAssocTarget] = useState<string | null>(null);
 
@@ -70,6 +76,17 @@ export const LeftPanel: React.FC<Props> = ({ canvasModel, existing = [], onAdd, 
     if (onAdd) onAdd(c);
   };
 
+  const onAddInterface = () => {
+    const spot = LayoutManager.findEmptySpot({
+      canvasModel,
+      existing: existing as DiagramComponent[],
+      desiredWidth: 160,
+      desiredHeight: 120,
+    });
+    const i = new InterfaceComponent(name || "IInterface", spot.x, spot.y);
+    if (onAdd) onAdd(i);
+  };
+
   const resetAssocSelection = () => {
     setAssocSource(null);
     setAssocTarget(null);
@@ -80,7 +97,7 @@ export const LeftPanel: React.FC<Props> = ({ canvasModel, existing = [], onAdd, 
     // emit a synthetic instruction via onAdd: we pass a special payload object
     if (onAdd) onAdd((() => {
       // placeholder: the EditorPage will intercept this special object and create the association
-      return ({ __createAssoc: true, sourceId: assocSource, targetId: assocTarget, assocType } as any) as unknown as DiagramComponent;
+        return ({ __createAssoc: true, sourceId: assocSource, targetId: assocTarget, assocType, assocKind, classAssocKind, assocName: assocNameField, cardinalitySource, cardinalityTarget } as any) as unknown as DiagramComponent;
     })());
     resetAssocSelection();
   };
@@ -94,6 +111,7 @@ export const LeftPanel: React.FC<Props> = ({ canvasModel, existing = [], onAdd, 
           <button onClick={() => setMode("actor")} style={{ flex: 1 }} disabled={mode === "actor"}>Actor</button>
           <button onClick={() => setMode("usecase")} style={{ flex: 1 }} disabled={mode === "usecase"}>Use Case</button>
           <button onClick={() => setMode("class")} style={{ flex: 1 }} disabled={mode === "class"}>Class</button>
+          <button onClick={() => setMode("interface")} style={{ flex: 1 }} disabled={mode === "interface"}>Interface</button>
           <button onClick={() => setMode("system")} style={{ flex: 1 }} disabled={mode === "system"}>System Boundary</button>
           <button onClick={() => setMode("assoc")} style={{ flex: 1 }} disabled={mode === "assoc"}>Association</button>
         </div>
@@ -106,16 +124,55 @@ export const LeftPanel: React.FC<Props> = ({ canvasModel, existing = [], onAdd, 
 
       {mode === "assoc" && (
         <div style={{ marginBottom: 8 }}>
-          <label style={{ display: "block", fontSize: 12, color: "#333" }}>Type</label>
-          <select value={assocType} onChange={(e) => setAssocType(e.target.value as UseCaseAssocType)} style={{ width: "100%", padding: 8 }}>
-            <option value="includes">&lt;&lt;includes&gt;&gt;</option>
-            <option value="extends">&lt;&lt;extends&gt;&gt;</option>
+          <label style={{ display: "block", fontSize: 12, color: "#333" }}>Association kind</label>
+          <select value={assocKind} onChange={(e) => setAssocKind(e.target.value as any)} style={{ width: "100%", padding: 8 }}>
+            <option value="usecase">UseCase (includes/extends)</option>
+            <option value="actor-usecase">Actor → UseCase</option>
+            <option value="class-assoc">Class Association (aggregation/composition/...)</option>
           </select>
+
+          {assocKind === "usecase" && (
+            <>
+              <label style={{ display: "block", fontSize: 12, color: "#333", marginTop: 8 }}>Type</label>
+              <select value={assocType} onChange={(e) => setAssocType(e.target.value as UseCaseAssocType)} style={{ width: "100%", padding: 8 }}>
+                <option value="includes">&lt;&lt;includes&gt;&gt;</option>
+                <option value="extends">&lt;&lt;extends&gt;&gt;</option>
+              </select>
+            </>
+          )}
+
+          {assocKind === "class-assoc" && (
+            <>
+              <label style={{ display: "block", fontSize: 12, color: "#333", marginTop: 8 }}>Association type</label>
+              <select value={classAssocKind} onChange={(e) => setClassAssocKind(e.target.value as any)} style={{ width: "100%", padding: 8 }}>
+                <option value="association">association</option>
+                <option value="aggregation">aggregation (hollow diamond)</option>
+                <option value="composition">composition (filled diamond)</option>
+                <option value="generalization">generalization (hollow triangle)</option>
+                <option value="realization">realization (dashed)</option>
+              </select>
+              <label style={{ display: "block", fontSize: 12, marginTop: 8 }}>Name (optional)</label>
+              <input value={assocNameField} onChange={(e) => setAssocNameField(e.target.value)} style={{ width: "100%", padding: 8 }} />
+              <label style={{ display: "block", fontSize: 12, marginTop: 8 }}>Cardinality (source - numeric, optional)</label>
+              <input type="number" min="0" step="1" value={cardinalitySource} onChange={(e) => setCardinalitySource(e.target.value)} style={{ width: "100%", padding: 8 }} />
+              <label style={{ display: "block", fontSize: 12, marginTop: 8 }}>Cardinality (target - numeric, optional)</label>
+              <input type="number" min="0" step="1" value={cardinalityTarget} onChange={(e) => setCardinalityTarget(e.target.value)} style={{ width: "100%", padding: 8 }} />
+            </>
+          )}
+
           <div style={{ marginTop: 8 }}>
             <label style={{ display: "block", fontSize: 12 }}>Source</label>
             <select value={assocSource ?? ""} onChange={(e) => setAssocSource(e.target.value || null)} style={{ width: "100%", padding: 8 }}>
               <option value="">-- select --</option>
-              {existing.map((c: any) => {
+              {existing
+                .filter((c: any) => {
+                  // If creating a realization, source must be an interface
+                  if (assocKind === "class-assoc" && classAssocKind === "realization") {
+                    return (c as any).type === "interface";
+                  }
+                  return true;
+                })
+                .map((c: any) => {
                 const id = (c as any).id ?? (c as any).model?.id ?? "";
                 const name = (c as any).name ?? (c as any).model?.name ?? null;
                 const typeLabel = (c as any).type ?? (c as any).model?.type ?? "component";
@@ -146,8 +203,9 @@ export const LeftPanel: React.FC<Props> = ({ canvasModel, existing = [], onAdd, 
         </div>
       )}
 
-  {mode === "actor" && <button onClick={onAddActor} style={{ padding: "8px 12px", width: "100%" }}>Add Actor</button>}
+    {mode === "actor" && <button onClick={onAddActor} style={{ padding: "8px 12px", width: "100%" }}>Add Actor</button>}
   {mode === "usecase" && <button onClick={onAddUseCase} style={{ padding: "8px 12px", width: "100%" }}>Add Use Case</button>}
+  {mode === "interface" && <button onClick={onAddInterface} style={{ padding: "8px 12px", width: "100%" }}>Add Interface</button>}
   {mode === "system" && <button onClick={onAddSystem} style={{ padding: "8px 12px", width: "100%" }}>Add System Boundary</button>}
   {mode === "class" && <button onClick={onAddClass} style={{ padding: "8px 12px", width: "100%" }}>Add Class</button>}
 
