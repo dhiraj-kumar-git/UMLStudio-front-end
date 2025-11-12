@@ -10,6 +10,9 @@ interface DiagramContextValue {
   updateComponentPosition: (id: string, x: number, y: number) => void;
   updateComponentData: (id: string, data: any) => void;
   removeComponent: (id: string) => void;
+  openDiagram: (id: string) => void;
+  closeDiagram: () => void;
+  saveContext: () => Promise<void>;
 }
 
 const DiagramContext = createContext<DiagramContextValue>({
@@ -18,6 +21,9 @@ const DiagramContext = createContext<DiagramContextValue>({
   updateComponentPosition: () => {},
   updateComponentData: () => {},
   removeComponent: () => {},
+  openDiagram: () => {},
+  closeDiagram: () => {},
+  saveContext: async () => {},
 });
 
 export const DiagramProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -33,6 +39,54 @@ export const DiagramProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       projectSession?.persist();
     } catch {}
+  };
+
+  // save the current context (session) into projectSession and localStorage
+  const saveContext = async () => {
+    if (!session) return;
+    try {
+      // ensure projectSession contains this diagram
+      if (projectSession) {
+        projectSession.diagrams.set(session.id, session);
+        await projectSession.persist();
+      }
+      // also keep a lightweight backup in localStorage to avoid losing context on reload
+      try {
+        const key = `ctx-${projectSession?.project.id ?? "global"}-${session.id}`;
+        localStorage.setItem(key, JSON.stringify(session.toJSON()));
+      } catch {}
+    } catch (err) {
+      // swallow for now
+    }
+  };
+
+  const openDiagram = (id: string) => {
+    if (!projectSession) return;
+    // persist current session before switching
+    try {
+      if (session) projectSession.diagrams.set(session.id, session);
+      projectSession.persist();
+    } catch {}
+    const next = projectSession.getDiagram(id);
+    if (!next) return;
+    // if there is a backup in localStorage load it into the session
+    try {
+      const key = `ctx-${projectSession.project.id}-${next.id}`;
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const restored = DiagramSession.fromJSON(parsed);
+        // replace components in next with restored components
+        next.components = restored.components;
+      }
+    } catch {}
+    setSession(next);
+  };
+
+  const closeDiagram = () => {
+    // persist and clear the context
+    saveContext();
+    setSession(undefined);
   };
 
   const addClassBox = (opts?: { x?: number; y?: number; name?: string }) => {
@@ -96,8 +150,29 @@ export const DiagramProvider: React.FC<{ children: ReactNode }> = ({ children })
     persistIfNeeded();
   };
 
+  // keep a localStorage backup whenever session changes
+  useEffect(() => {
+    if (!session) return;
+    try {
+      const key = `ctx-${projectSession?.project.id ?? "global"}-${session.id}`;
+      localStorage.setItem(key, JSON.stringify(session.toJSON()));
+    } catch {}
+  }, [session]);
+
   return (
-    <DiagramContext.Provider value={{ session, setSession, addClassBox, updateComponentPosition, updateComponentData, removeComponent }}>
+    <DiagramContext.Provider
+      value={{
+        session,
+        setSession,
+        addClassBox,
+        updateComponentPosition,
+        updateComponentData,
+        removeComponent,
+        openDiagram,
+        closeDiagram,
+        saveContext,
+      }}
+    >
       {children}
     </DiagramContext.Provider>
   );

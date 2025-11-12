@@ -6,21 +6,20 @@ import { Project } from "../models/Project";
 export class UserSession {
   user: User;
   activeProject?: ProjectSession;
-
+  activeProjectAccessPolicy?: "READ_ONLY" | "READ_WRITE";
   constructor(user: User) {
     this.user = user;
   }
 
-  openProject(projectData: any) {
-    // Normalize incoming project data into a Project model instance.
+  openProject(projectData: any, accessPolicy: "READ_ONLY" | "READ_WRITE" = "READ_WRITE") {
     const proj = new Project(
       projectData?.id ?? crypto.randomUUID(),
       projectData?.name ?? "Untitled Project",
       projectData?.description ?? "",
-      projectData?.createdAt ?? new Date().toISOString(),
-      projectData?.updatedAt ?? new Date().toISOString()
+      projectData?.createdAt ?? new Date().toISOString()
     );
     this.activeProject = new ProjectSession(proj);
+    this.activeProjectAccessPolicy = accessPolicy;
   }
 
   closeProject() {
