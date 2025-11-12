@@ -1,0 +1,24 @@
+.uml-rightpanel { background: #070708; color: #e6f7fb; border-left: 1px solid #0f2a33; }
+.uml-rightpanel .btn-add { background: transparent; color: #00c8ff; border: 1px solid #093340; padding: 6px 8px; border-radius: 6px; cursor: pointer; }
+.uml-rightpanel .btn-delete { background: transparent; color: #ff3b30; border: 1px solid rgba(255,0,0,0.08); padding: 6px 8px; border-radius: 6px; cursor: pointer; }
+.uml-rightpanel .btn-delete { background: transparent; color: #ff3b30; border: 1px solid rgba(255,59,48,0.06); padding: 6px 8px; border-radius: 6px; cursor: pointer; }
+.uml-rightpanel-scroll { padding: 12px; }
+.uml-diagram-item { margin-bottom: 8px; background: linear-gradient(180deg, rgba(4,12,14,0.3), rgba(3,8,10,0.2)); border-radius: 6px; padding: 8px; }
+.uml-diagram-row { display:flex; align-items:center; justify-content:space-between; }
+.uml-diagram-left { display:flex; align-items:center; gap:8px; cursor:pointer; }
+.uml-icon { background: #001319; padding:6px; border-radius:6px; color:#9ff0ff; }
+.uml-icon.small { padding:4px; font-size:12px; }
+.uml-diagram-title { font-weight:600; color:#e6f7fb; }
+.uml-diagram-type { font-size:12px; color:#9fcbd6; }
+.uml-diagram-children { margin-top:8px; padding-left: 12px; border-left:2px solid rgba(0,200,255,0.06); }
+.uml-diagram-section { font-size:12px; color:#8bd6de; font-weight:600; margin-top:6px; }
+.uml-diagram-list { max-height:120px; overflow:auto; margin-top:6px; }
+.uml-diagram-child-row { display:flex; gap:8px; align-items:center; padding:6px 8px; border-bottom:1px dashed rgba(255,255,255,0.02); }
+.uml-diagram-child-row.component { background: #e9eef0; color: #0b0b0c; border-radius:4px; }
+.uml-diagram-child-row.association { background: transparent; color: #dff9fb; }
+.uml-diagram-child-title { color: inherit; }
+.uml-empty { color:#5b6e72; font-size:13px; }
+
+/* left slider visual */
+.uml-rightpanel { background: #101214; color: #e6f7fb; border-left: 8px solid #000; }
+.uml-rightpanel::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: linear-gradient(180deg,#000,#111); }

@@ -1,0 +1,27 @@
+.uml-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+.uml-modal {
+  width: 560px;
+  background: #0b0b0c; /* near-black */
+  color: #e6f7fb; /* cyan-ish text */
+  border-radius: 8px;
+  box-shadow: 0 8px 30px rgba(2,6,23,0.6);
+  padding: 18px;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+.uml-modal h3 { margin: 0 0 12px 0; color: #9ff0ff; }
+.uml-modal .row { display:flex; gap:8px; margin-bottom:10px; }
+.uml-modal label { font-size: 13px; color: #cfeff3; width: 160px; }
+.uml-modal input[type="text"], .uml-modal textarea { flex:1; background: #0f1416; border:1px solid #233238; color: #e6f7fb; padding:8px; border-radius:6px; }
+.uml-modal textarea { min-height:80px; resize:vertical; }
+.uml-modal .actions { display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
+.uml-modal .btn { padding:8px 12px; border-radius:6px; cursor:pointer; border:none; }
+.uml-modal .btn.primary { background: #00c8ff; color: #021017; }
+.uml-modal .btn.ghost { background: transparent; color: #cfeff3; border:1px solid #233238; }

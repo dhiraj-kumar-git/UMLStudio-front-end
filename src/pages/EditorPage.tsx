@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import InfiniteCanvas from "../components/InfiniteCanvas";
 import LeftPanel from "../components/LeftPanel";
+import RightPanel from "../components/RightPanel";
 import { CanvasModel } from "../models/CanvasModel";
 import type { DiagramComponent } from "../models/DiagramComponent";
 import DiagramAssociation from "../models/DiagramAssociation";
@@ -9,6 +10,9 @@ import ClassAssociation from "../models/ClassAssociation";
 import ActorUseCaseAssociation from "../models/ActorUseCaseAssociation";
 import { LayoutManager } from "../models/LayoutManager";
 import CanvasController from "../controller/CanvasController";
+import { useProjectContext } from "../context/ProjectContext";
+import { useDiagramContext } from "../context/DiagramContext";
+import ProjectDiagramModal from "../components/ProjectDiagramModal";
 
 export const EditorPage: React.FC = () => {
   const model = useMemo(() => new CanvasModel({ cellSize: 48, majorEvery: 8, initialScale: 1 }), []);
@@ -119,7 +123,38 @@ export const EditorPage: React.FC = () => {
     setComponents((s) => [...s, c]);
   };
 
+  // ensure a project exists in context — if none, show a modal
+  const projectCtx = useProjectContext();
+  const diagCtx = useDiagramContext();
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  useEffect(() => {
+    if (!projectCtx.project) setShowCreateModal(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleCreateFromModal = async (payload: { projectName?: string; projectDescription?: string; diagramName: string; diagramDescription?: string; diagramType?: string }) => {
+    try {
+      let proj = projectCtx.project;
+      if (!proj) {
+        proj = await projectCtx.createProject?.(payload.projectName || "Project", payload.projectDescription);
+      }
+      const session = diagCtx.createSession?.(payload.diagramName || "Diagram", { components: [], associations: [], type: payload.diagramType });
+      if (session) {
+        await projectCtx.addDiagramToProject?.(session as any);
+        diagCtx.openSessionById(session.id);
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("EditorPage: create from modal failed", err);
+    } finally {
+      setShowCreateModal(false);
+    }
+  };
+
+  // render the modal when requested (Editor-level modal)
+
   return (
+    <>
     <div style={{ display: "flex", width: "100vw", height: "100vh", background: "#f7f7fb" }}>
       <LeftPanel canvasModel={model} existing={components} onAdd={handleAdd} selected={selection} onUpdateComponent={(id, patch) => {
         setComponents((prev) => {
@@ -134,10 +169,22 @@ export const EditorPage: React.FC = () => {
       }} onUpdateAssociation={(assoc) => {
         setAssociations((prev) => prev.map((a) => ((a as any).id === (assoc as any).id ? assoc : a)));
       }} />
-      <div style={{ flex: 1 }}>
-  <InfiniteCanvas model={model} background="#fff" showControls={true} components={components} associations={associations} controller={controller} />
+      <div style={{ flex: 1, position: "relative" }}>
+        <InfiniteCanvas model={model} background="#fff" showControls={true} components={components} associations={associations} controller={controller} />
       </div>
+      <RightPanel />
     </div>
+    {showCreateModal && (
+      <ProjectDiagramModal
+        open={showCreateModal}
+        projectExists={!!projectCtx.project}
+        defaultProjectName={projectCtx.project?.name}
+        defaultProjectDescription={projectCtx.project?.description}
+        onCancel={() => setShowCreateModal(false)}
+        onCreate={handleCreateFromModal}
+      />
+    )}
+    </>
   );
 };
 

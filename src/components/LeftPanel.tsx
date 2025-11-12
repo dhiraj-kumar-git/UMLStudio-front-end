@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import LayoutManager from "../models/LayoutManager";
 import { CanvasModel } from "../models/CanvasModel";
 import { ActorComponent } from "../models/ActorComponent";
@@ -9,6 +9,7 @@ import InterfaceComponent from "../models/InterfaceComponent";
 import type { UseCaseAssocType } from "../models/UseCaseAssociation";
 import SystemBoundary from "../models/SystemBoundary";
 import ClassComponent from "../models/ClassComponent";
+import { useDiagramContext } from "../context/DiagramContext";
 
 type Props = {
   canvasModel: CanvasModel;
@@ -30,6 +31,16 @@ export const LeftPanel: React.FC<Props> = ({ canvasModel, existing = [], onAdd, 
     const [cardinalityTarget, setCardinalityTarget] = useState<string>("");
   const [assocSource, setAssocSource] = useState<string | null>(null);
   const [assocTarget, setAssocTarget] = useState<string | null>(null);
+
+  const diagCtx = useDiagramContext();
+  const diagType = diagCtx.currentSession?.diagramJSON?.type ?? null;
+
+  // When the current diagram changes, set sensible default mode based on diagram type
+  useEffect(() => {
+    if (diagType === "UseCaseDiagram") setMode("usecase");
+    else if (diagType === "ClassDiagram") setMode("class");
+    else setMode("actor");
+  }, [diagType]);
 
   const onAddActor = () => {
     const spot = LayoutManager.findEmptySpot({
@@ -103,113 +114,96 @@ export const LeftPanel: React.FC<Props> = ({ canvasModel, existing = [], onAdd, 
   };
 
   return (
-    <div style={{ width: 400, padding: 12, borderRight: "1px solid #eee", background: "#fafafa", height: "100vh" }}>
+    <div style={{ width: 360, padding: 12, borderRight: "1px solid #eee", background: "#fafafa", height: "100vh" }}>
       <h3 style={{ marginTop: 2 }}>Toolbox</h3>
-      <div style={{ marginBottom: 8 }}>
-        <label style={{ display: "block", fontSize: 12, color: "#333" }}>Mode</label>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => setMode("actor")} style={{ flex: 1 }} disabled={mode === "actor"}>Actor</button>
-          <button onClick={() => setMode("usecase")} style={{ flex: 1 }} disabled={mode === "usecase"}>Use Case</button>
-          <button onClick={() => setMode("class")} style={{ flex: 1 }} disabled={mode === "class"}>Class</button>
-          <button onClick={() => setMode("interface")} style={{ flex: 1 }} disabled={mode === "interface"}>Interface</button>
-          <button onClick={() => setMode("system")} style={{ flex: 1 }} disabled={mode === "system"}>System Boundary</button>
-          <button onClick={() => setMode("assoc")} style={{ flex: 1 }} disabled={mode === "assoc"}>Association</button>
-        </div>
-      </div>
 
-      <div style={{ marginBottom: 8 }}>
-        <label style={{ display: "block", fontSize: 12, color: "#333" }}>{mode === "assoc" ? "Association label/ type" : "Name"}</label>
-        <input value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%", padding: 8 }} />
-      </div>
-
-      {mode === "assoc" && (
-        <div style={{ marginBottom: 8 }}>
-          <label style={{ display: "block", fontSize: 12, color: "#333" }}>Association kind</label>
-          <select value={assocKind} onChange={(e) => setAssocKind(e.target.value as any)} style={{ width: "100%", padding: 8 }}>
-            <option value="usecase">UseCase (includes/extends)</option>
-            <option value="actor-usecase">Actor → UseCase</option>
-            <option value="class-assoc">Class Association (aggregation/composition/...)</option>
-          </select>
-
-          {assocKind === "usecase" && (
-            <>
-              <label style={{ display: "block", fontSize: 12, color: "#333", marginTop: 8 }}>Type</label>
-              <select value={assocType} onChange={(e) => setAssocType(e.target.value as UseCaseAssocType)} style={{ width: "100%", padding: 8 }}>
-                <option value="includes">&lt;&lt;includes&gt;&gt;</option>
-                <option value="extends">&lt;&lt;extends&gt;&gt;</option>
-              </select>
-            </>
-          )}
-
-          {assocKind === "class-assoc" && (
-            <>
-              <label style={{ display: "block", fontSize: 12, color: "#333", marginTop: 8 }}>Association type</label>
-              <select value={classAssocKind} onChange={(e) => setClassAssocKind(e.target.value as any)} style={{ width: "100%", padding: 8 }}>
-                <option value="association">association</option>
-                <option value="aggregation">aggregation (hollow diamond)</option>
-                <option value="composition">composition (filled diamond)</option>
-                <option value="generalization">generalization (hollow triangle)</option>
-                <option value="realization">realization (dashed)</option>
-              </select>
-              <label style={{ display: "block", fontSize: 12, marginTop: 8 }}>Name (optional)</label>
-              <input value={assocNameField} onChange={(e) => setAssocNameField(e.target.value)} style={{ width: "100%", padding: 8 }} />
-              <label style={{ display: "block", fontSize: 12, marginTop: 8 }}>Cardinality (source - numeric, optional)</label>
-              <input type="number" min="0" step="1" value={cardinalitySource} onChange={(e) => setCardinalitySource(e.target.value)} style={{ width: "100%", padding: 8 }} />
-              <label style={{ display: "block", fontSize: 12, marginTop: 8 }}>Cardinality (target - numeric, optional)</label>
-              <input type="number" min="0" step="1" value={cardinalityTarget} onChange={(e) => setCardinalityTarget(e.target.value)} style={{ width: "100%", padding: 8 }} />
-            </>
-          )}
-
-          <div style={{ marginTop: 8 }}>
-            <label style={{ display: "block", fontSize: 12 }}>Source</label>
-            <select value={assocSource ?? ""} onChange={(e) => setAssocSource(e.target.value || null)} style={{ width: "100%", padding: 8 }}>
-              <option value="">-- select --</option>
-              {existing
-                .filter((c: any) => {
-                  // If creating a realization, source must be an interface
-                  if (assocKind === "class-assoc" && classAssocKind === "realization") {
-                    return (c as any).type === "interface";
-                  }
-                  return true;
-                })
-                .map((c: any) => {
-                const id = (c as any).id ?? (c as any).model?.id ?? "";
-                const name = (c as any).name ?? (c as any).model?.name ?? null;
-                const typeLabel = (c as any).type ?? (c as any).model?.type ?? "component";
-                const label = name ? `${typeLabel}: ${name}` : id ? `${typeLabel}: ${id.slice ? id.slice(0, 6) : id}` : "component";
-                return (
-                  <option key={id} value={id}>{label}</option>
-                );
-              })}
-            </select>
-            <label style={{ display: "block", fontSize: 12, marginTop: 6 }}>Target</label>
-            <select value={assocTarget ?? ""} onChange={(e) => setAssocTarget(e.target.value || null)} style={{ width: "100%", padding: 8 }}>
-              <option value="">-- select --</option>
-              {existing.map((c: any) => {
-                const id = (c as any).id ?? (c as any).model?.id ?? "";
-                const name = (c as any).name ?? (c as any).model?.name ?? null;
-                const typeLabel = (c as any).type ?? (c as any).model?.type ?? "component";
-                const label = name ? `${typeLabel}: ${name}` : id ? `${typeLabel}: ${id.slice ? id.slice(0, 6) : id}` : "component";
-                return (
-                  <option key={id} value={id}>{label}</option>
-                );
-              })}
-            </select>
-            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-              <button onClick={onCreateAssoc} style={{ flex: 1 }} disabled={!assocSource || !assocTarget}>Create</button>
-              <button onClick={resetAssocSelection} style={{ flex: 1 }}>Reset</button>
-            </div>
-          </div>
-        </div>
+      {/* If there is no current diagram, show a message */}
+      {!diagType && (
+        <div style={{ color: '#666', marginBottom: 12 }}>Open a diagram (from the right panel) to see editing tools.</div>
       )}
 
-    {mode === "actor" && <button onClick={onAddActor} style={{ padding: "8px 12px", width: "100%" }}>Add Actor</button>}
-  {mode === "usecase" && <button onClick={onAddUseCase} style={{ padding: "8px 12px", width: "100%" }}>Add Use Case</button>}
-  {mode === "interface" && <button onClick={onAddInterface} style={{ padding: "8px 12px", width: "100%" }}>Add Interface</button>}
-  {mode === "system" && <button onClick={onAddSystem} style={{ padding: "8px 12px", width: "100%" }}>Add System Boundary</button>}
-  {mode === "class" && <button onClick={onAddClass} style={{ padding: "8px 12px", width: "100%" }}>Add Class</button>}
+      {/* Use-case diagram tools */}
+      {diagType === "UseCaseDiagram" && (
+        <>
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ display: "block", fontSize: 12, color: "#333" }}>Name</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%", padding: 8 }} />
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <button onClick={onAddActor} style={{ flex: 1 }}>Add Actor</button>
+            <button onClick={onAddUseCase} style={{ flex: 1 }}>Add Use Case</button>
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            <button onClick={onAddSystem} style={{ width: '100%' }}>Add System Boundary</button>
+          </div>
+          <div style={{ height: 12 }} />
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ display: "block", fontSize: 12, color: "#333" }}>Associations</label>
+            <select value={assocKind} onChange={(e) => setAssocKind(e.target.value as any)} style={{ width: "100%", padding: 8 }}>
+              <option value="usecase">UseCase (includes/extends)</option>
+              <option value="actor-usecase">Actor → UseCase</option>
+            </select>
+            {assocKind === 'usecase' && (
+              <div style={{ marginTop: 8 }}>
+                <label style={{ display: "block", fontSize: 12, color: "#333" }}>Type</label>
+                <select value={assocType} onChange={(e) => setAssocType(e.target.value as UseCaseAssocType)} style={{ width: "100%", padding: 8 }}>
+                  <option value="includes">&lt;&lt;includes&gt;&gt;</option>
+                  <option value="extends">&lt;&lt;extends&gt;&gt;</option>
+                </select>
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
-      {/* Selection editor */}
+      {/* Class diagram tools */}
+      {diagType === "ClassDiagram" && (
+        <>
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ display: "block", fontSize: 12, color: "#333" }}>Name</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%", padding: 8 }} />
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <button onClick={onAddClass} style={{ flex: 1 }}>Add Class</button>
+            <button onClick={onAddInterface} style={{ flex: 1 }}>Add Interface</button>
+          </div>
+          <div style={{ height: 12 }} />
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ display: "block", fontSize: 12, color: "#333" }}>Class associations</label>
+            <select value={classAssocKind} onChange={(e) => setClassAssocKind(e.target.value as any)} style={{ width: "100%", padding: 8 }}>
+              <option value="association">association</option>
+              <option value="aggregation">aggregation</option>
+              <option value="composition">composition</option>
+              <option value="generalization">generalization</option>
+              <option value="realization">realization</option>
+            </select>
+            <div style={{ marginTop: 8 }}>
+              <label style={{ display: "block", fontSize: 12 }}>Name (optional)</label>
+              <input value={assocNameField} onChange={(e) => setAssocNameField(e.target.value)} style={{ width: "100%", padding: 8 }} />
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <input type="number" min="0" placeholder="src card" value={cardinalitySource} onChange={(e) => setCardinalitySource(e.target.value)} style={{ flex: 1, padding: 8 }} />
+              <input type="number" min="0" placeholder="tgt card" value={cardinalityTarget} onChange={(e) => setCardinalityTarget(e.target.value)} style={{ flex: 1, padding: 8 }} />
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* If diagram type is unknown, show general tools */}
+      {!diagType && (
+        <>
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ display: "block", fontSize: 12, color: "#333" }}>Name</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%", padding: 8 }} />
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <button onClick={onAddActor} style={{ flex: 1 }}>Add Actor</button>
+            <button onClick={onAddUseCase} style={{ flex: 1 }}>Add Use Case</button>
+          </div>
+        </>
+      )}
+
+  {/* Selection editor */}
       <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px dashed #eee" }}>
         <h4 style={{ margin: "6px 0" }}>Selection</h4>
         {!selected || selected.kind === null ? (
