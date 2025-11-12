@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import ProjectDiagramModal from "./ProjectDiagramModal";
 import Modal from "./Modal";
 import "./RightPanel.css";
+import BlogPanel from "./BlogPanel";
 
 const IconFor = (kind: string) => {
   const cyan = "#00c8ff";
@@ -60,6 +61,13 @@ const RightPanel: React.FC = () => {
       window.removeEventListener("mouseup", onUp);
     };
   }, [isResizing]);
+
+  // publish CSS variable for right panel width
+  useEffect(() => {
+    try {
+      document.documentElement.style.setProperty("--right-panel-width", `${width}px`);
+    } catch {}
+  }, [width]);
 
   if (!projCtx) return null;
   const project = projCtx.project;
@@ -159,7 +167,7 @@ const RightPanel: React.FC = () => {
   };
 
   return (
-    <div className="uml-rightpanel" style={{ position: "relative", width, height: "100vh", display: "flex", flexDirection: "column" }}>
+    <div className="uml-rightpanel" style={{ position: "fixed", right: 0, top: 0, bottom: 0, width, display: "flex", flexDirection: "column" }}>
       <div style={{ padding: 8, borderBottom: "1px solid #eef2f7", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <strong>Project</strong>
         <div style={{ display: "flex", gap: 8, alignItems: 'center' }}>
@@ -169,7 +177,7 @@ const RightPanel: React.FC = () => {
           <button className="btn-add" onClick={handleAddDiagram}>+ Diagram</button>
         </div>
       </div>
-      <div className="uml-rightpanel-scroll" style={{ overflow: "auto", flex: 1, padding: 8 }}>
+  <div className="uml-rightpanel-scroll" style={{ overflow: "auto", flex: '1 1 auto', padding: 8, minHeight: 0 }}>
         {project ? (
           <div>
             <div className="uml-project-header" style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -240,6 +248,8 @@ const RightPanel: React.FC = () => {
           <div style={{ color: "#888" }}>No project loaded</div>
         )}
       </div>
+  {/* Blog: lower half with sticky search and inner scroll */}
+  <BlogPanel />
       {showModal && (
         <ProjectDiagramModal
           open={showModal}

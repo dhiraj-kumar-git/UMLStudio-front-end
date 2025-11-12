@@ -62,12 +62,73 @@ export const DiagramProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const openSessionById = (id: string) => {
-    const s = DiagramSession.loadById(id);
-    if (s) {
-      setCurrentId(s.id);
-      // eslint-disable-next-line no-console
-      console.log("DiagramProvider: opened session ->", s.toJSON());
-    }
+    (async () => {
+      try {
+        // ask the application to provide the current in-memory diagramJSON before switching
+        const reqId = (typeof crypto !== "undefined" && (crypto as any).randomUUID) ? (crypto as any).randomUUID() : Math.random().toString(36).slice(2, 9);
+        const replyEventName = "uml:reply-save";
+        const reqEventName = "uml:request-save";
+
+        const replyPromise: Promise<any | null> = new Promise((resolve) => {
+          const onReply = (ev: Event) => {
+            try {
+              const detail = (ev as CustomEvent).detail;
+              if (detail && detail.requestId === reqId) {
+                window.removeEventListener(replyEventName, onReply);
+                resolve(detail.diagramJSON ?? null);
+              }
+            } catch (err) {
+              window.removeEventListener(replyEventName, onReply);
+              resolve(null);
+            }
+          };
+          window.addEventListener(replyEventName, onReply as EventListener);
+          // timeout fallback
+          setTimeout(() => {
+            try {
+              window.removeEventListener(replyEventName, onReply as EventListener);
+            } catch {}
+            resolve(null);
+          }, 400);
+        });
+
+        // dispatch request
+        try {
+          window.dispatchEvent(new CustomEvent(reqEventName, { detail: { requestId: reqId } }));
+        } catch {}
+
+        const provided = await replyPromise;
+        if (provided) {
+          // persist provided diagramJSON into the currently-open session before switching
+          try {
+            const curId = currentId;
+            if (curId) {
+              const cur = DiagramSession.loadById(curId);
+              if (cur) {
+                cur.diagramJSON = provided;
+                cur.touch();
+                cur.saveToLocalStorage();
+                setSessions((prev) => {
+                  const next = prev.filter((x) => x.id !== cur.id);
+                  return [cur, ...next];
+                });
+              }
+            }
+          } catch (err) {}
+        }
+
+        const s = DiagramSession.loadById(id);
+        if (s) {
+          setCurrentId(s.id);
+          // eslint-disable-next-line no-console
+          console.log("DiagramProvider: opened session ->", s.toJSON());
+        }
+      } catch (err) {
+        // fallback to naive open
+        const s = DiagramSession.loadById(id);
+        if (s) setCurrentId(s.id);
+      }
+    })();
   };
 
   const currentSession = useMemo(() => (currentId ? DiagramSession.loadById(currentId) : null), [currentId, sessions]);

@@ -10,6 +10,7 @@ import type { UseCaseAssocType } from "../models/UseCaseAssociation";
 import SystemBoundary from "../models/SystemBoundary";
 import ClassComponent from "../models/ClassComponent";
 import { useDiagramContext } from "../context/DiagramContext";
+import "./LeftPanel.css";
 
 type Props = {
   canvasModel: CanvasModel;
@@ -22,7 +23,9 @@ type Props = {
 
 export const LeftPanel: React.FC<Props> = ({ canvasModel, existing = [], onAdd, selected, onUpdateComponent, onUpdateAssociation }) => {
   const [name, setName] = useState("Actor");
-  const [mode, setMode] = useState<"actor" | "usecase" | "assoc" | "system" | "class" | "interface">("actor");
+  const [width, setWidth] = useState<number>(360);
+  const [isResizing, setIsResizing] = useState(false);
+  // mode is derived from the current diagram type now; keep local selection of operation via buttons if needed
   const [assocType, setAssocType] = useState<UseCaseAssocType>("includes");
   const [assocKind, setAssocKind] = useState<"usecase" | "actor-usecase" | "class-assoc">("usecase");
   const [classAssocKind, setClassAssocKind] = useState<"association" | "aggregation" | "composition" | "generalization" | "realization">("association");
@@ -35,12 +38,29 @@ export const LeftPanel: React.FC<Props> = ({ canvasModel, existing = [], onAdd, 
   const diagCtx = useDiagramContext();
   const diagType = diagCtx.currentSession?.diagramJSON?.type ?? null;
 
-  // When the current diagram changes, set sensible default mode based on diagram type
   useEffect(() => {
-    if (diagType === "UseCaseDiagram") setMode("usecase");
-    else if (diagType === "ClassDiagram") setMode("class");
-    else setMode("actor");
-  }, [diagType]);
+    const onMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      const newW = Math.max(200, Math.min(800, e.clientX));
+      setWidth(newW);
+    };
+    const onUp = () => setIsResizing(false);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [isResizing]);
+
+  // publish CSS variable so the center canvas can react to left/right widths
+  useEffect(() => {
+    try {
+      document.documentElement.style.setProperty("--left-panel-width", `${width}px`);
+    } catch {}
+  }, [width]);
+
+  // No local mode state is needed — toolbox UI is derived from the current diagram type.
 
   const onAddActor = () => {
     const spot = LayoutManager.findEmptySpot({
@@ -114,7 +134,7 @@ export const LeftPanel: React.FC<Props> = ({ canvasModel, existing = [], onAdd, 
   };
 
   return (
-    <div style={{ width: 360, padding: 12, borderRight: "1px solid #eee", background: "#fafafa", height: "100vh" }}>
+    <div className="uml-leftpanel" style={{ width }}>
       <h3 style={{ marginTop: 2 }}>Toolbox</h3>
 
       {/* If there is no current diagram, show a message */}
@@ -150,6 +170,10 @@ export const LeftPanel: React.FC<Props> = ({ canvasModel, existing = [], onAdd, 
                   <option value="includes">&lt;&lt;includes&gt;&gt;</option>
                   <option value="extends">&lt;&lt;extends&gt;&gt;</option>
                 </select>
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <button onClick={onCreateAssoc} style={{ flex: 1 }} disabled={!assocSource || !assocTarget}>Create Association</button>
+                  <button onClick={resetAssocSelection} style={{ flex: 1 }}>Reset</button>
+                </div>
               </div>
             )}
           </div>
@@ -184,6 +208,10 @@ export const LeftPanel: React.FC<Props> = ({ canvasModel, existing = [], onAdd, 
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               <input type="number" min="0" placeholder="src card" value={cardinalitySource} onChange={(e) => setCardinalitySource(e.target.value)} style={{ flex: 1, padding: 8 }} />
               <input type="number" min="0" placeholder="tgt card" value={cardinalityTarget} onChange={(e) => setCardinalityTarget(e.target.value)} style={{ flex: 1, padding: 8 }} />
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <button onClick={onCreateAssoc} style={{ flex: 1 }} disabled={!assocSource || !assocTarget}>Create Association</button>
+              <button onClick={resetAssocSelection} style={{ flex: 1 }}>Reset</button>
             </div>
           </div>
         </>
@@ -391,6 +419,7 @@ export const LeftPanel: React.FC<Props> = ({ canvasModel, existing = [], onAdd, 
             })()
           ) : null}
       </div>
+      <div className="uml-leftpanel-resizer" onMouseDown={() => setIsResizing(true)} />
     </div>
   );
 };

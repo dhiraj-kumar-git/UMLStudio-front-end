@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import InfiniteCanvas from "../components/InfiniteCanvas";
 import LeftPanel from "../components/LeftPanel";
 import RightPanel from "../components/RightPanel";
@@ -10,6 +10,11 @@ import ClassAssociation from "../models/ClassAssociation";
 import ActorUseCaseAssociation from "../models/ActorUseCaseAssociation";
 import { LayoutManager } from "../models/LayoutManager";
 import CanvasController from "../controller/CanvasController";
+import { ActorComponent } from "../models/ActorComponent";
+import UseCaseComponent from "../models/UseCaseComponent";
+import SystemBoundary from "../models/SystemBoundary";
+import ClassComponent from "../models/ClassComponent";
+import InterfaceComponent from "../models/InterfaceComponent";
 import { useProjectContext } from "../context/ProjectContext";
 import { useDiagramContext } from "../context/DiagramContext";
 import ProjectDiagramModal from "../components/ProjectDiagramModal";
@@ -127,6 +132,126 @@ export const EditorPage: React.FC = () => {
   const projectCtx = useProjectContext();
   const diagCtx = useDiagramContext();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const loadingRef = useRef(false);
+  const syncTimerRef = useRef<number | null>(null);
+  
+  // When a diagram session is opened in DiagramContext, revive its stored JSON
+  // into live component and association instances and load them into the canvas.
+  useEffect(() => {
+    const s = diagCtx.currentSession;
+    if (!s) {
+      setComponents([]);
+      setAssociations([]);
+      return;
+    }
+    // prevent the sync-effect from persisting back while we're loading
+    loadingRef.current = true;
+    try {
+      const dj = s.diagramJSON ?? { components: [], associations: [] };
+      const compMap = new Map<string, DiagramComponent>();
+      const comps: DiagramComponent[] = [];
+      const rawComps = Array.isArray(dj.components) ? dj.components : [];
+      for (const cj of rawComps) {
+        let inst: DiagramComponent | null | undefined = null;
+        const t = cj?.type ?? cj?.componentType ?? "";
+        if (t === "actor") inst = (ActorComponent as any).fromJSON ? (ActorComponent as any).fromJSON(cj) : null;
+        else if (t === "usecase") inst = (UseCaseComponent as any).fromJSON ? (UseCaseComponent as any).fromJSON(cj) : null;
+        else if (t === "system-boundary") inst = (SystemBoundary as any).reviveFromJSON ? (SystemBoundary as any).reviveFromJSON(cj) : null;
+        else if (t === "class") inst = (ClassComponent as any).reviveFromJSON ? (ClassComponent as any).reviveFromJSON(cj) : null;
+        else if (t === "interface") inst = (InterfaceComponent as any).reviveFromJSON ? (InterfaceComponent as any).reviveFromJSON(cj) : null;
+        else {
+          // fallback: try common static factories if present
+          if ((ActorComponent as any).fromJSON && cj.type === "actor") inst = (ActorComponent as any).fromJSON(cj);
+        }
+        if (inst) {
+          compMap.set((inst as any).id, inst);
+          comps.push(inst);
+        }
+      }
+
+      const assocRaw = Array.isArray(dj.associations) ? dj.associations : [];
+      const assocs: any[] = [];
+      const resolver = (id: string) => compMap.get(id);
+      for (const aj of assocRaw) {
+        let a: DiagramAssociation | null = null;
+        const at = aj?.type ?? aj?.assocType ?? "";
+        if (at === "usecase-association" || aj?.assocType) a = UseCaseAssociation.fromJSON ? UseCaseAssociation.fromJSON(aj, resolver) : null;
+        else if (at === "class-association" || aj?.kind) a = ClassAssociation.fromJSON ? ClassAssociation.fromJSON(aj, resolver) : null;
+        else if (at === "actor-usecase" || aj?.type === "actor-usecase") a = DiagramAssociation.reviveFromJSON ? DiagramAssociation.reviveFromJSON(aj, resolver) as any : null;
+        else a = DiagramAssociation.reviveFromJSON ? DiagramAssociation.reviveFromJSON(aj, resolver) : null;
+        if (a) assocs.push(a);
+      }
+
+      // compute offsets for parallel edges
+      LayoutManager.assignOffsetsForAll(assocs);
+
+      setComponents(comps);
+      setAssociations(assocs as any[]);
+      // eslint-disable-next-line no-console
+      console.log("EditorPage: loaded session into canvas ->", s.id, { comps: comps.length, assocs: assocs.length });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("EditorPage: failed to revive session ->", err);
+    }
+    finally {
+      // allow one tick for React state to settle before re-enabling sync
+      setTimeout(() => {
+        loadingRef.current = false;
+      }, 0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [diagCtx.currentSession]);
+
+  // Reply to save requests from DiagramContext when it wants the editor to
+  // provide the current in-memory diagramJSON before switching sessions.
+  useEffect(() => {
+    const onRequest = (ev: Event) => {
+      try {
+        const detail = (ev as CustomEvent).detail ?? {};
+        const requestId = detail.requestId;
+        const diagramJSON = { components: components.map((c) => (c as any).toJSON ? (c as any).toJSON() : (c as any)), associations: associations.map((a) => (a as any).toJSON ? (a as any).toJSON() : (a as any)) };
+        window.dispatchEvent(new CustomEvent("uml:reply-save", { detail: { requestId, diagramJSON } }));
+      } catch (err) {
+        try { window.dispatchEvent(new CustomEvent("uml:reply-save", { detail: { requestId: (ev as any)?.detail?.requestId, diagramJSON: null } })); } catch {}
+      }
+    };
+    window.addEventListener("uml:request-save", onRequest as EventListener);
+    return () => window.removeEventListener("uml:request-save", onRequest as EventListener);
+  }, [components, associations]);
+
+  // Keep the DiagramContext's current session JSON updated when components/associations change.
+  useEffect(() => {
+    // Debounce updates to avoid rapid round-trips that cause reload loops.
+    try {
+      if (loadingRef.current) return;
+      if (syncTimerRef.current) {
+        window.clearTimeout(syncTimerRef.current as any);
+      }
+      syncTimerRef.current = window.setTimeout(() => {
+          try {
+            const cs = diagCtx.currentSession;
+            if (!cs) return;
+            const diagramJSON = { components: components.map((c) => (c as any).toJSON ? (c as any).toJSON() : (c as any)), associations: associations.map((a) => (a as any).toJSON ? (a as any).toJSON() : (a as any)), type: cs.diagramJSON?.type };
+            // avoid writing if nothing changed
+            try {
+              const oldStr = JSON.stringify(cs.diagramJSON ?? {});
+              const newStr = JSON.stringify(diagramJSON ?? {});
+              if (oldStr === newStr) return;
+            } catch {}
+            diagCtx.updateCurrent?.({ diagramJSON });
+          } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn("EditorPage: failed to sync to diagram context", err);
+        }
+      }, 180);
+    } catch (err) {}
+    return () => {
+      if (syncTimerRef.current) {
+        window.clearTimeout(syncTimerRef.current as any);
+        syncTimerRef.current = null;
+      }
+    };
+  }, [components, associations]);
   useEffect(() => {
     if (!projectCtx.project) setShowCreateModal(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -155,7 +280,6 @@ export const EditorPage: React.FC = () => {
 
   return (
     <>
-    <div style={{ display: "flex", width: "100vw", height: "100vh", background: "#f7f7fb" }}>
       <LeftPanel canvasModel={model} existing={components} onAdd={handleAdd} selected={selection} onUpdateComponent={(id, patch) => {
         setComponents((prev) => {
           const next = prev.map((c) => {
@@ -169,21 +293,23 @@ export const EditorPage: React.FC = () => {
       }} onUpdateAssociation={(assoc) => {
         setAssociations((prev) => prev.map((a) => ((a as any).id === (assoc as any).id ? assoc : a)));
       }} />
-      <div style={{ flex: 1, position: "relative" }}>
+
+      <RightPanel />
+
+      <div style={{ position: 'fixed', left: 'var(--left-panel-width,360px)', right: 'var(--right-panel-width,320px)', top: 0, bottom: 0, background: '#f7f7fb' }}>
         <InfiniteCanvas model={model} background="#fff" showControls={true} components={components} associations={associations} controller={controller} />
       </div>
-      <RightPanel />
-    </div>
-    {showCreateModal && (
-      <ProjectDiagramModal
-        open={showCreateModal}
-        projectExists={!!projectCtx.project}
-        defaultProjectName={projectCtx.project?.name}
-        defaultProjectDescription={projectCtx.project?.description}
-        onCancel={() => setShowCreateModal(false)}
-        onCreate={handleCreateFromModal}
-      />
-    )}
+
+      {showCreateModal && (
+        <ProjectDiagramModal
+          open={showCreateModal}
+          projectExists={!!projectCtx.project}
+          defaultProjectName={projectCtx.project?.name}
+          defaultProjectDescription={projectCtx.project?.description}
+          onCancel={() => setShowCreateModal(false)}
+          onCreate={handleCreateFromModal}
+        />
+      )}
     </>
   );
 };

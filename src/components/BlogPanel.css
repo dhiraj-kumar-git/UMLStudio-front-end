@@ -1,0 +1,59 @@
+.uml-blog-panel {
+  background: #000;
+  color: #00f0ff;
+  display: flex;
+  flex-direction: column;
+  height: 46vh; /* occupy lower half-ish of the right panel */
+  border-top: 1px solid rgba(0,200,255,0.06);
+}
+
+.uml-blog-search {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: linear-gradient(180deg, rgba(0,0,0,0.9), rgba(0,0,0,0.7));
+  padding: 8px;
+  border-bottom: 1px solid rgba(0,200,255,0.04);
+}
+
+.uml-blog-search input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(0,200,255,0.12);
+  background: rgba(0,0,0,0.5);
+  color: #00f0ff;
+  outline: none;
+}
+
+.uml-blog-content {
+  padding: 10px 12px;
+  overflow: auto;
+  flex: 1;
+}
+
+.uml-blog-section {
+  margin-bottom: 12px;
+  border-left: 2px solid rgba(0,200,255,0.06);
+  padding-left: 8px;
+}
+
+.uml-blog-title {
+  font-weight: 700;
+  color: #00f0ff;
+  margin-bottom: 6px;
+}
+
+.uml-blog-html p, .uml-blog-html li {
+  color: #9fefff;
+  line-height: 1.4;
+}
+
+.uml-blog-html h2, .uml-blog-html h3 {
+  color: #bffaff;
+}
+
+.uml-blog-empty {
+  color: #446c70;
+  padding: 12px;
+}
