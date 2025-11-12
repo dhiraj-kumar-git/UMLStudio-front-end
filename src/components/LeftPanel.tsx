@@ -166,23 +166,41 @@ export const LeftPanel: React.FC<Props> = ({ canvasModel, existing = [], onAdd, 
             (() => {
               const assoc = selected.association as any;
               const labelRef = React.createRef<HTMLInputElement>();
-              const onAddCP = () => {
-                const src = existing.find((c: any) => (c as any).id === (assoc as any).source?.id);
-                const tgt = existing.find((c: any) => (c as any).id === (assoc as any).target?.id);
-                if (!src || !tgt) return;
-                const mx = ((src as any).x + (tgt as any).x) / 2;
-                const my = ((src as any).y + (tgt as any).y) / 2;
-                assoc.addControlPoint({ x: mx + 20, y: my + 20 });
-                if (onUpdateAssociation) onUpdateAssociation(assoc as DiagramAssociation);
-              };
+              // control points are added by clicking the association on the canvas; no UI button needed
               return (
                 <div>
                   <label style={{ display: "block", fontSize: 12 }}>Label</label>
                   <input defaultValue={assoc?.name ?? ""} ref={labelRef} style={{ width: "100%", padding: 6 }} />
-                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                    <button onClick={() => { assoc.name = labelRef.current ? labelRef.current.value : assoc.name; if (onUpdateAssociation) onUpdateAssociation(assoc as DiagramAssociation); }} style={{ flex: 1 }}>Save</button>
-                    <button onClick={onAddCP} style={{ flex: 1 }}>Add control point</button>
-                  </div>
+                          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                            <button onClick={() => { assoc.name = labelRef.current ? labelRef.current.value : assoc.name; if (onUpdateAssociation) onUpdateAssociation(assoc as DiagramAssociation); }} style={{ flex: 1 }}>Save</button>
+                          </div>
+                          <div style={{ marginTop: 10 }}>
+                            <label style={{ display: "block", fontSize: 12 }}>Source</label>
+                            <select defaultValue={(assoc?.source as any)?.id ?? ""} onChange={(e) => {
+                              const id = e.target.value;
+                              const src = existing.find((c: any) => (c as any).id === id);
+                              if (src) {
+                                assoc.source = src;
+                              }
+                            }} style={{ width: "100%", padding: 6 }}>
+                              <option value="">-- select --</option>
+                              {existing.map((c: any) => <option key={(c as any).id} value={(c as any).id}>{(c as any).name ?? (c as any).id}</option>)}
+                            </select>
+                            <label style={{ display: "block", fontSize: 12, marginTop: 8 }}>Target</label>
+                            <select defaultValue={(assoc?.target as any)?.id ?? ""} onChange={(e) => {
+                              const id = e.target.value;
+                              const tgt = existing.find((c: any) => (c as any).id === id);
+                              if (tgt) {
+                                assoc.target = tgt;
+                              }
+                            }} style={{ width: "100%", padding: 6 }}>
+                              <option value="">-- select --</option>
+                              {existing.map((c: any) => <option key={(c as any).id} value={(c as any).id}>{(c as any).name ?? (c as any).id}</option>)}
+                            </select>
+                            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                              <button onClick={() => { if (onUpdateAssociation) onUpdateAssociation(assoc as DiagramAssociation); }} style={{ flex: 1 }}>Apply</button>
+                            </div>
+                          </div>
                 </div>
               );
             })()

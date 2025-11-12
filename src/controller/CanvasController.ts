@@ -16,6 +16,10 @@ export class CanvasController {
 
   setSelection(sel: Selection) {
     this.selected = sel;
+    try {
+      // eslint-disable-next-line no-console
+      console.log("CanvasController: setSelection ->", sel && (sel as any).kind ? (sel as any).kind + ":" + (sel as any).id : sel);
+    } catch {}
     if (this.onSelectionChange) this.onSelectionChange(sel);
   }
 
@@ -28,7 +32,18 @@ export class CanvasController {
   }
 
   notifyAssociationUpdated(assoc: DiagramAssociation) {
+    // debug: trace association updates that flow through the controller
+    try {
+      // eslint-disable-next-line no-console
+      console.log("CanvasController: notifyAssociationUpdated ->", (assoc as any)?.id);
+    } catch {}
     if (this.onAssociationUpdated) this.onAssociationUpdated(assoc);
+    // If the currently selected association is the one updated, refresh the selected.association
+    if (this.selected && this.selected.kind === "association" && (this.selected as any).id === (assoc as any).id) {
+      (this.selected as any).association = assoc;
+      // notify host about selection change so any selection editor can refresh
+      if (this.onSelectionChange) this.onSelectionChange(this.selected);
+    }
   }
 }
 

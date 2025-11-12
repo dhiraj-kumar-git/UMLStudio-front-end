@@ -30,16 +30,33 @@ export const EditorPage: React.FC = () => {
         }
         return c;
       });
-      // recompute association offsets because positions changed (optional)
-      LayoutManager.assignOffsetsForAll((associations as any) || []);
       return [...next];
+    });
+    // recompute association offsets using latest associations state
+    setAssociations((prev) => {
+      LayoutManager.assignOffsetsForAll(prev);
+      return [...prev];
     });
   };
   controller.onAssociationUpdated = (assoc) => {
+    // debug: log the incoming association update
+    try {
+      // eslint-disable-next-line no-console
+      console.log("EditorPage: onAssociationUpdated ->", (assoc as any)?.id);
+    } catch {}
     setAssociations((prev) => {
-      const next = prev.map((a) => ((a as any).id === (assoc as any).id ? assoc : a));
-      return [...next];
+      // remove any existing entries with the same id (dedupe) and append the incoming assoc
+      const filtered = prev.filter((a) => (a as any).id !== (assoc as any).id);
+      return [...filtered, assoc];
     });
+    // Ensure controller.selected.association points to the canonical instance in state
+    try {
+      const sel = (controller as any).selected;
+      if (sel && sel.kind === "association" && (sel as any).id === (assoc as any).id) {
+        // update selection to reference the new instance
+        controller.setSelection({ kind: "association", id: (assoc as any).id, association: assoc as any });
+      }
+    } catch {}
   };
 
   const handleAdd = (c: DiagramComponent) => {

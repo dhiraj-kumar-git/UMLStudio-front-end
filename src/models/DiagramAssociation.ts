@@ -81,7 +81,7 @@ export abstract class DiagramAssociation {
    * world units); the caller should pass the canvas context and the current
    * scale (so points are multiplied by scale to convert to screen space).
    */
-  draw(ctx: CanvasRenderingContext2D, scale = 1) {
+  draw(ctx: CanvasRenderingContext2D, scale = 1, options?: { highlight?: boolean; highlightStyle?: "stroke" | "overlay" }) {
     const sa = this.getSourceAnchor();
     const ta = this.getTargetAnchor();
 
@@ -102,6 +102,47 @@ export abstract class DiagramAssociation {
     }
 
     const screenPts = pts.map((p) => ({ x: (p.x + perp.x) * scale, y: (p.y + perp.y) * scale }));
+
+    // If highlighting requested, draw a highlighted stroke (as border) behind the main line.
+    if (options && options.highlight) {
+      try {
+        // eslint-disable-next-line no-console
+        console.log("DiagramAssociation.draw (highlight) ->", this.id, { controlPoints: this.controlPoints });
+      } catch {}
+      const style = options.highlightStyle || "stroke";
+      if (style === "stroke") {
+        ctx.save();
+        ctx.lineWidth = Math.max(4, 6 * (scale || 1));
+        ctx.strokeStyle = "#00c8ff";
+        ctx.beginPath();
+        ctx.moveTo(screenPts[0].x, screenPts[0].y);
+        for (let i = 1; i < screenPts.length; i++) ctx.lineTo(screenPts[i].x, screenPts[i].y);
+        ctx.stroke();
+        ctx.restore();
+      } else {
+        // overlay style (semi-transparent fill behind path)
+        ctx.save();
+        ctx.lineWidth = Math.max(4, 6 * (scale || 1));
+        ctx.strokeStyle = "rgba(0,200,255,0.18)";
+        ctx.beginPath();
+        ctx.moveTo(screenPts[0].x, screenPts[0].y);
+        for (let i = 1; i < screenPts.length; i++) ctx.lineTo(screenPts[i].x, screenPts[i].y);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // --- debug tracer: render a tiny label near the first segment to prove draw() is being called
+      try {
+        ctx.save();
+        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        ctx.font = `${10 * (scale || 1)}px sans-serif`;
+        const label = `(id:${this.id})`;
+        const px = screenPts[0].x + 6 * (scale || 1);
+        const py = screenPts[0].y + 6 * (scale || 1);
+        ctx.fillText(label, px, py);
+        ctx.restore();
+      } catch {}
+    }
 
     ctx.save();
     ctx.strokeStyle = "#333";
@@ -237,12 +278,50 @@ export abstract class DiagramAssociation {
     if (!this.controlPoints) return;
     if (index < 0 || index >= this.controlPoints.length) return;
     this.controlPoints[index] = p;
+    try {
+      // eslint-disable-next-line no-console
+      console.log("DiagramAssociation: moveControlPoint ->", this.id, index, p);
+    } catch {}
   }
 
   removeControlPoint(index: number) {
     if (!this.controlPoints) return;
     if (index < 0 || index >= this.controlPoints.length) return;
     this.controlPoints.splice(index, 1);
+  }
+
+  /**
+   * Insert a control point on the closest segment to the given point (world coords).
+   * Returns the index at which the control point was inserted.
+   */
+  insertControlPointAtPoint(p: { x: number; y: number }) {
+    const sa = this.getSourceAnchor();
+    const ta = this.getTargetAnchor();
+    const pts: { x: number; y: number }[] = [sa];
+    if (Array.isArray(this.controlPoints) && this.controlPoints.length) pts.push(...this.controlPoints);
+    pts.push(ta);
+    let bestIdx = 0;
+    let bestDist = Infinity;
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1];
+      const b = pts[i];
+      const d = DiagramAssociation._pointToSegmentDistance(p.x, p.y, a.x, a.y, b.x, b.y);
+      if (d < bestDist) {
+        bestDist = d;
+        bestIdx = i - 1; // insert after segment start -> controlPoints index = i-1
+      }
+    }
+
+    const insertAt = bestIdx + 1; // controlPoints index where to insert
+    if (!this.controlPoints) this.controlPoints = [];
+    // splice into controlPoints at position (insertAt -1)
+    const spliceAt = Math.max(0, Math.min(this.controlPoints.length, insertAt - 1));
+    this.controlPoints.splice(spliceAt, 0, { x: p.x, y: p.y });
+    try {
+      // eslint-disable-next-line no-console
+      console.log("DiagramAssociation: insertControlPointAtPoint ->", this.id, spliceAt, p);
+    } catch {}
+    return spliceAt;
   }
 }
 
