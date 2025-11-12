@@ -31,6 +31,14 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setProject(loaded);
         // eslint-disable-next-line no-console
         console.log("ProjectProvider: loaded project from API ->", loaded.toJSON());
+        return;
+      }
+      // fallback to local store when API doesn't return a project
+      const recovered = Project.loadFromLocalStore();
+      if (recovered) {
+        setProject(recovered);
+        // eslint-disable-next-line no-console
+        console.log("ProjectProvider: loaded project from local store ->", recovered.toJSON());
       }
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -153,6 +161,44 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
     window.addEventListener("beforeunload", onUnload);
     return () => window.removeEventListener("beforeunload", onUnload);
+  }, [project]);
+
+  // Keep project diagram entries in sync when sessions update elsewhere
+  useEffect(() => {
+    const onSessionUpdated = (ev: Event) => {
+      try {
+        const detail = (ev as CustomEvent)?.detail;
+        let sid: string | null = null;
+        if (detail && typeof detail === 'object') {
+          // detail may contain the session JSON or a simple notification
+          sid = (detail as any).id ?? (detail as any).requestId ?? (detail as any).diagramId ?? (detail as any).deletedDiagramId ?? null;
+        }
+        // if we can determine a session id, attempt to load the latest session and merge into project
+        if (sid && project) {
+          try {
+            const latest = DiagramSession.loadById(sid);
+            if (latest) {
+              const idx = project.diagrams.findIndex((d) => (d as any).id === sid);
+              if (idx >= 0) {
+                project.diagrams[idx] = latest as any;
+                // persist immediately to local store and API
+                const payload = project.toJSON();
+                Project.saveToLocalStore(payload);
+                api.saveProject(payload).catch(() => {});
+                // update state to re-render with fresh object
+                setProject(Project.fromJSON(payload));
+              }
+            }
+          } catch (err) {
+            // ignore per-session sync errors
+          }
+        }
+      } catch (err) {
+        // ignore
+      }
+    };
+    window.addEventListener('uml:session-updated', onSessionUpdated as EventListener);
+    return () => window.removeEventListener('uml:session-updated', onSessionUpdated as EventListener);
   }, [project]);
 
   const val: ProjectContextValue = useMemo(() => ({ project, loadProject, saveProject, createProject, addDiagramToProject, deleteProject }), [project]);

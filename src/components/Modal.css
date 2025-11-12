@@ -1,11 +1,12 @@
 .uml-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.0);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 20000;
+  transition: background 180ms ease;
 }
 .uml-modal {
   width: 560px;
@@ -15,6 +16,9 @@
   box-shadow: 0 8px 30px rgba(2,6,23,0.6);
   padding: 18px;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  opacity: 0;
+  transform: translateY(-6px) scale(0.99);
+  transition: opacity 160ms ease, transform 160ms ease;
 }
 .uml-modal h3 { margin: 0 0 12px 0; color: #9ff0ff; }
 .uml-modal .row { display:flex; gap:8px; margin-bottom:10px; }
@@ -25,3 +29,6 @@
 .uml-modal .btn { padding:8px 12px; border-radius:6px; cursor:pointer; border:none; }
 .uml-modal .btn.primary { background: #00c8ff; color: #021017; }
 .uml-modal .btn.ghost { background: transparent; color: #cfeff3; border:1px solid #233238; }
+
+.uml-modal-overlay.visible { background: rgba(0,0,0,0.5); }
+.uml-modal.visible { opacity: 1; transform: translateY(0) scale(1); }

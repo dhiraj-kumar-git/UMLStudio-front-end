@@ -5,10 +5,11 @@
   bottom: 0;
   width: 360px;
   padding: 12px;
-  background: linear-gradient(180deg, #071214, #0b1416);
-  color: #cffcff;
-  border-right: 1px solid rgba(0,200,255,0.04);
+  background: #141b27e6;
+  color: #00e5ff;
+  border-right: 2px solid rgba(148, 163, 184, 0.15);
   overflow-y: auto;
+
   overflow-x: hidden; /* prevent horizontal scroll when inputs stretch */
   z-index: 40;
 }
@@ -18,14 +19,14 @@
   box-sizing: border-box;
 }
 
-.uml-leftpanel h3 { margin-top: 2px; color: #bffaff; }
+.uml-leftpanel h3 { margin-top: 2px; color: #00e5ff; }
 
 .uml-leftpanel .uml-tool-section { margin-bottom: 12px; }
 
 .uml-leftpanel input[type="text"], .uml-leftpanel input[type="number"], .uml-leftpanel select {
   background: rgba(0,0,0,0.25);
   border: 1px solid rgba(0,200,255,0.08);
-  color: #bffaff;
+  color: #00e5ff;
   padding: 8px;
   border-radius: 6px;
 }

@@ -146,6 +146,9 @@ export const DiagramProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
     // eslint-disable-next-line no-console
     console.log("DiagramProvider: updated current session ->", cs.toJSON());
+    try {
+      window.dispatchEvent(new CustomEvent("uml:session-updated", { detail: cs.toJSON() }));
+    } catch {}
   };
 
   const saveCurrent = () => {
@@ -159,6 +162,9 @@ export const DiagramProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
     // eslint-disable-next-line no-console
     console.log("DiagramProvider: saved current session ->", payload);
+    try {
+      window.dispatchEvent(new CustomEvent("uml:session-updated", { detail: cs.toJSON() }));
+    } catch {}
   };
 
   const closeCurrent = () => {

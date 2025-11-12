@@ -10,7 +10,10 @@ import type { UseCaseAssocType } from "../models/UseCaseAssociation";
 import SystemBoundary from "../models/SystemBoundary";
 import ClassComponent from "../models/ClassComponent";
 import { useDiagramContext } from "../context/DiagramContext";
+import { useProjectContext } from "../context/ProjectContext";
+import { useNavigate } from "react-router-dom";
 import "./LeftPanel.css";
+import Modal from "./Modal";
 
 type Props = {
   canvasModel: CanvasModel;
@@ -37,6 +40,10 @@ export const LeftPanel: React.FC<Props> = ({ canvasModel, existing = [], onAdd, 
 
   const diagCtx = useDiagramContext();
   const diagType = diagCtx.currentSession?.diagramJSON?.type ?? null;
+  const projectCtx = useProjectContext();
+  const navigate = useNavigate();
+  const [showBackConfirm, setShowBackConfirm] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
@@ -135,44 +142,68 @@ export const LeftPanel: React.FC<Props> = ({ canvasModel, existing = [], onAdd, 
 
   return (
     <div className="uml-leftpanel" style={{ width }}>
-      <h3 style={{ marginTop: 2 }}>Toolbox</h3>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <button onClick={() => setShowBackConfirm(true)} style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid rgba(0,200,255,0.06)', background: 'transparent', color: '#00e5ff' }}>← Back</button>
+        {/* <div style={{ color: '#ffffff', fontWeight: 700 }}>Editor</div> */}
+        <div style={{ width: 48 }} />
+      </div>
 
       {/* If there is no current diagram, show a message */}
       {!diagType && (
-        <div style={{ color: '#666', marginBottom: 12 }}>Open a diagram (from the right panel) to see editing tools.</div>
+        <div style={{ color: 'rgba(0,0,0,0.25)', marginBottom: 12 }}>Open a diagram (from the right panel) to see editing tools.</div>
       )}
 
       {/* Use-case diagram tools */}
       {diagType === "UseCaseDiagram" && (
         <>
-          <div style={{ marginBottom: 8 }}>
-            <label style={{ display: "block", fontSize: 12, color: "#333" }}>Name</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%", padding: 8 }} />
+          <div style={{ marginBottom: 8 , display:'flex',flexDirection:'row', alignItems:'center', gap:10}}>
+            <label style={{ display: "block", fontSize: 16, color: '#0fa3b4ff' }}>Name</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%", padding: 8, border: '1px solid rgba(0, 200, 255, 0.28)', borderRadius: 6, background: 'rgba(0,0,0,0.25)', color: '#6365f1f0' }} />
           </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-            <button onClick={onAddActor} style={{ flex: 1 }}>Add Actor</button>
-            <button onClick={onAddUseCase} style={{ flex: 1 }}>Add Use Case</button>
+            <button onClick={onAddActor} style={{ flex: 1 , border: '1px solid rgba(0, 200, 255, 0.28)', borderRadius: 6, background: 'rgba(0,0,0,0.25)', color: '#00e5ff' }}>Add Actor</button>
+            <button onClick={onAddUseCase} style={{ flex: 1 , border: '1px solid rgba(0, 200, 255, 0.28)', borderRadius: 6, background: 'rgba(0,0,0,0.25)', color: '#00e5ff' }}>Add Use Case</button>
+            <button onClick={onAddSystem} style={{flex:1 , border: '1px solid rgba(0, 200, 255, 0.28)', borderRadius: 6, background: 'rgba(0,0,0,0.25)', color: '#00e5ff' }}>Add System Boundary</button>
           </div>
+          <div style={{ height: 40 }} />
           <div style={{ marginBottom: 8 }}>
-            <button onClick={onAddSystem} style={{ width: '100%' }}>Add System Boundary</button>
-          </div>
-          <div style={{ height: 12 }} />
-          <div style={{ marginBottom: 8 }}>
-            <label style={{ display: "block", fontSize: 12, color: "#333" }}>Associations</label>
-            <select value={assocKind} onChange={(e) => setAssocKind(e.target.value as any)} style={{ width: "100%", padding: 8 }}>
+            <label style={{ display: "block", fontSize: 16, color: "#0fa3b4ff", marginBottom: 8 }}>Associations</label>
+            <select value={assocKind} onChange={(e) => setAssocKind(e.target.value as any)} style={{ width: "100%", padding: 8, border: '1px solid rgba(0, 200, 255, 0.28)', borderRadius: 6, background: 'rgba(0,0,0,0.25)' }}>
               <option value="usecase">UseCase (includes/extends)</option>
               <option value="actor-usecase">Actor → UseCase</option>
             </select>
             {assocKind === 'usecase' && (
-              <div style={{ marginTop: 8 }}>
-                <label style={{ display: "block", fontSize: 12, color: "#333" }}>Type</label>
-                <select value={assocType} onChange={(e) => setAssocType(e.target.value as UseCaseAssocType)} style={{ width: "100%", padding: 8 }}>
+              <div style={{ marginTop: 8, display:'flex',flexDirection:'row' }}>
+                <label style={{ display: "block", fontSize: 16, color: "#0fa3b4ff", marginTop: 16, marginBottom: 6 , paddingRight: 8 }}>Type</label>
+                <select value={assocType} onChange={(e) => setAssocType(e.target.value as UseCaseAssocType)} style={{ width: "100%", padding: 8 , border: '1px solid rgba(0, 200, 255, 0.28)', borderRadius: 6, background: 'rgba(0,0,0,0.25)' }}>
                   <option value="includes">&lt;&lt;includes&gt;&gt;</option>
                   <option value="extends">&lt;&lt;extends&gt;&gt;</option>
                 </select>
-                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  <button onClick={onCreateAssoc} style={{ flex: 1 }} disabled={!assocSource || !assocTarget}>Create Association</button>
-                  <button onClick={resetAssocSelection} style={{ flex: 1 }}>Reset</button>
+                </div>
+            )}
+            {assocKind && (
+              <div>
+                <div style={{ marginTop: 20, display: 'grid', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: 14, color: "#0fa3b4ff", marginBottom: 6 }}>Source</label>
+                      <select value={assocSource ?? ''} onChange={(e) => setAssocSource(e.target.value || null)} style={{ width: '100%', padding: 8 , border: '1px solid rgba(0, 200, 255, 0.28)', borderRadius: 6, background: 'rgba(0,0,0,0.25)' }}>
+                        <option value=''>-- select source --</option>
+                        {existing.map((c: any) => <option key={(c as any).id} value={(c as any).id}>{(c as any).name ?? (c as any).id} ({(c as any).type ?? 'component'})</option>)}
+                      </select>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: 14, color: "#0fa3b4ff", marginBottom: 6 }}>Target</label>
+                      <select value={assocTarget ?? ''} onChange={(e) => setAssocTarget(e.target.value || null)} style={{ width: '100%', padding: 8 , border: '1px solid rgba(0, 200, 255, 0.28)', borderRadius: 6, background: 'rgba(0,0,0,0.25)' }}>
+                        <option value=''>-- select target --</option>
+                        {existing.map((c: any) => <option key={(c as any).id} value={(c as any).id}>{(c as any).name ?? (c as any).id} ({(c as any).type ?? 'component'})</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={onCreateAssoc} style={{ flex: 1, border: '1px solid rgba(0, 200, 255, 0.28)', color: '#fff', borderRadius: 6, background: 'linear-gradient(90deg, #6365f1ad, #8a5cf691)' }} disabled={!assocSource || !assocTarget || assocSource === assocTarget}>Create Association</button>
+                    <button onClick={resetAssocSelection} style={{ flex: 1 , border: '1px solid rgba(0, 200, 255, 0.28)', color: '#fff', borderRadius: 6, background: 'linear-gradient(90deg, #8a5cf691, #6365f1ad)' }}>Reset</button>
+                  </div>
                 </div>
               </div>
             )}
@@ -205,16 +236,44 @@ export const LeftPanel: React.FC<Props> = ({ canvasModel, existing = [], onAdd, 
               <label style={{ display: "block", fontSize: 12 }}>Name (optional)</label>
               <input value={assocNameField} onChange={(e) => setAssocNameField(e.target.value)} style={{ width: "100%", padding: 8 }} />
             </div>
+            <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: 12 }}>Source</label>
+                <select value={assocSource ?? ''} onChange={(e) => setAssocSource(e.target.value || null)} style={{ width: '100%', padding: 8 }}>
+                  <option value=''>-- select source --</option>
+                  {existing.map((c: any) => <option key={(c as any).id} value={(c as any).id}>{(c as any).name ?? (c as any).id} ({(c as any).type ?? 'component'})</option>)}
+                </select>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: 12 }}>Target</label>
+                <select value={assocTarget ?? ''} onChange={(e) => setAssocTarget(e.target.value || null)} style={{ width: '100%', padding: 8 }}>
+                  <option value=''>-- select target --</option>
+                  {existing.map((c: any) => <option key={(c as any).id} value={(c as any).id}>{(c as any).name ?? (c as any).id} ({(c as any).type ?? 'component'})</option>)}
+                </select>
+              </div>
+            </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               <input type="number" min="0" placeholder="src card" value={cardinalitySource} onChange={(e) => setCardinalitySource(e.target.value)} style={{ flex: 1, padding: 8 }} />
               <input type="number" min="0" placeholder="tgt card" value={cardinalityTarget} onChange={(e) => setCardinalityTarget(e.target.value)} style={{ flex: 1, padding: 8 }} />
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <button onClick={onCreateAssoc} style={{ flex: 1 }} disabled={!assocSource || !assocTarget}>Create Association</button>
+              <button onClick={onCreateAssoc} style={{ flex: 1 }} disabled={!assocSource || !assocTarget || assocSource === assocTarget}>Create Association</button>
               <button onClick={resetAssocSelection} style={{ flex: 1 }}>Reset</button>
             </div>
           </div>
         </>
+      )}
+      {/* Class diagram instructions (help text) */}
+      {diagType === "ClassDiagram" && (
+        <div style={{ marginTop: 12, padding: 8, background: 'linear-gradient(180deg, rgba(2,10,12,0.3), rgba(2,6,8,0.1))', borderRadius: 6 }}>
+          <h4 style={{ margin: '6px 0', color: '#9fefff' }}>Class Diagram Tips</h4>
+          <ul style={{ margin: 0, paddingLeft: 16, color: '#cfeff3', fontSize: 13 }}>
+            <li>Use the Add Class / Add Interface buttons to place components on the canvas.</li>
+            <li>Select Source and Target to create associations (aggregation, composition, inheritance, etc.).</li>
+            <li>Use cardinality fields to specify multiplicities (optional).</li>
+            <li>Click a class to edit attributes and methods in the Selection panel below.</li>
+          </ul>
+        </div>
       )}
 
       {/* If diagram type is unknown, show general tools */}
@@ -420,6 +479,68 @@ export const LeftPanel: React.FC<Props> = ({ canvasModel, existing = [], onAdd, 
           ) : null}
       </div>
       <div className="uml-leftpanel-resizer" onMouseDown={() => setIsResizing(true)} />
+
+      {showBackConfirm && (
+        <Modal title="Save changes?" onClose={() => setShowBackConfirm(false)}>
+          <div style={{ padding: 8 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: '#bffaff' }}>Save changes?</div>
+            <div style={{ marginBottom: 12 }}>Do you want to save the current diagram session before returning to Home? Choosing Save will persist the session to your project.</div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn ghost" onClick={() => setShowBackConfirm(false)}>Cancel</button>
+              <button className="btn" onClick={async () => {
+                // Don't save: close current and navigate home
+                try {
+                  diagCtx.closeCurrent?.();
+                } catch {}
+                setShowBackConfirm(false);
+                navigate('/home');
+              }}>Don't Save</button>
+              <button className="btn" style={{ background: '#00a6d6', color: '#fff' }} onClick={async () => {
+                setSaving(true);
+                try {
+                  // ensure current session is stored
+                  const cs = diagCtx.currentSession;
+                  if (cs) {
+                    // save session to local storage
+                    diagCtx.saveCurrent?.();
+                    // ensure project contains session
+                    if (projectCtx.project) {
+                      const exists = (projectCtx.project.diagrams || []).find((d: any) => d.id === cs.id);
+                      if (!exists) {
+                        await projectCtx.addDiagramToProject?.(cs as any);
+                      } else {
+                        // update existing diagram entry in project and persist
+                        const pd = projectCtx.project;
+                        const idx = pd.diagrams.findIndex((d) => (d as any).id === cs.id);
+                        if (idx >= 0) {
+                          pd.diagrams[idx] = cs as any;
+                          // update project state and persist
+                          try {
+                            // call saveProject which uses api.saveProject
+                            await projectCtx.saveProject?.();
+                          } catch {}
+                        }
+                      }
+                    } else {
+                      // no project: create a default project and add diagram
+                      const p = await projectCtx.createProject?.('Project (auto)');
+                      if (p && cs) await projectCtx.addDiagramToProject?.(cs as any);
+                    }
+                  }
+                } catch (err) {
+                  // eslint-disable-next-line no-console
+                  console.warn('LeftPanel: save before back failed', err);
+                } finally {
+                  setSaving(false);
+                  setShowBackConfirm(false);
+                  try { diagCtx.closeCurrent?.(); } catch {}
+                  navigate('/home');
+                }
+              }}>{saving ? 'Saving...' : 'Save'}</button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

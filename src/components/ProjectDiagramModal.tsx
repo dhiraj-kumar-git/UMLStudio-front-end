@@ -52,10 +52,14 @@ const ProjectDiagramModal: React.FC<Props> = ({ open, projectExists, defaultProj
             </div>
             <div className="row">
               <label>Diagram type</label>
-              <select value={diagramType} onChange={(e) => setDiagramType(e.target.value)} style={{ flex: 1, padding: 8, borderRadius: 6, background: '#0f1416', color: '#e6f7fb', border: '1px solid #233238' }}>
-                <option value="UseCaseDiagram">Use Case Diagram</option>
-                <option value="ClassDiagram">Class Diagram</option>
-              </select>
+              {editingDiagramId ? (
+                <div style={{ padding: 8, color: '#9fcbd6' }}>{diagramType}</div>
+              ) : (
+                <select value={diagramType} onChange={(e) => setDiagramType(e.target.value)} style={{ flex: 1, padding: 8, borderRadius: 6, background: '#0f1416', color: '#e6f7fb', border: '1px solid #233238' }}>
+                  <option value="UseCaseDiagram">Use Case Diagram</option>
+                  <option value="ClassDiagram">Class Diagram</option>
+                </select>
+              )}
             </div>
           </>
         )}

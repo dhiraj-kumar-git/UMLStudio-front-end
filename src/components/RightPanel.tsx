@@ -6,6 +6,7 @@ import ProjectDiagramModal from "./ProjectDiagramModal";
 import Modal from "./Modal";
 import "./RightPanel.css";
 import BlogPanel from "./BlogPanel";
+import DiagramSession from "../models/DiagramSession";
 
 const IconFor = (kind: string) => {
   const cyan = "#00c8ff";
@@ -45,6 +46,11 @@ const RightPanel: React.FC = () => {
   const [projectCollapsed, setProjectCollapsed] = useState(false);
   const [editingDiagram, setEditingDiagram] = useState<any | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [itemDeleteTarget, setItemDeleteTarget] = useState<null | { diagramId: string; kind: "component" | "association"; id: string; name?: string }>(null);
+  const [itemDeleting, setItemDeleting] = useState(false);
+  const [diagramDeleteTarget, setDiagramDeleteTarget] = useState<null | string>(null);
+  const [diagramDeleting, setDiagramDeleting] = useState(false);
+  const [projectVersion, setProjectVersion] = useState(0);
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
@@ -69,8 +75,23 @@ const RightPanel: React.FC = () => {
     } catch {}
   }, [width]);
 
+  // Refresh project view when a session is updated elsewhere (editor saves)
+  useEffect(() => {
+    const onSessionUpdated = () => {
+      try {
+        // quick reload project from local store / API
+        projCtx.loadProject?.();
+        setProjectVersion((v) => v + 1);
+      } catch {}
+    };
+    window.addEventListener("uml:session-updated", onSessionUpdated as EventListener);
+    return () => window.removeEventListener("uml:session-updated", onSessionUpdated as EventListener);
+  }, [projCtx]);
+
   if (!projCtx) return null;
   const project = projCtx.project;
+  // force re-render key
+  const containerKey = project ? project.id + "-" + projectVersion : "no-project-" + projectVersion;
 
   const handleAddDiagram = () => {
     // if no project exists, prompt to create a project first
@@ -167,7 +188,7 @@ const RightPanel: React.FC = () => {
   };
 
   return (
-    <div className="uml-rightpanel" style={{ position: "fixed", right: 0, top: 0, bottom: 0, width, display: "flex", flexDirection: "column" }}>
+    <div key={containerKey} className="uml-rightpanel" style={{ position: "fixed", right: 0, top: 0, bottom: 0, width, display: "flex", flexDirection: "column" }}>
       <div style={{ padding: 8, borderBottom: "1px solid #eef2f7", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <strong>Project</strong>
         <div style={{ display: "flex", gap: 8, alignItems: 'center' }}>
@@ -203,8 +224,13 @@ const RightPanel: React.FC = () => {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div className="uml-diagram-type">{(d as any).diagramJSON?.type || "Diagram"}</div>
-                        <div style={{ cursor: 'pointer' }} title="Edit diagram" onClick={() => handleEditDiagram(d)}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 21v-3.75L14.06 6.19a2 2 0 012.83 0l1.92 1.92a2 2 0 010 2.83L7.75 22H4a1 1 0 01-1-1z" stroke="#00c8ff" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <div style={{ cursor: 'pointer' }} title="Edit diagram" onClick={() => handleEditDiagram(d)}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 21v-3.75L14.06 6.19a2 2 0 012.83 0l1.92 1.92a2 2 0 010 2.83L7.75 22H4a1 1 0 01-1-1z" stroke="#00c8ff" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          </div>
+                          <div style={{ cursor: 'pointer' }} title="Delete diagram" onClick={() => setDiagramDeleteTarget((d as any).id)}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 6h18" stroke="#ff3b30" strokeWidth="1.2" strokeLinecap="round"/><path d="M8 6v12a2 2 0 002 2h4a2 2 0 002-2V6" stroke="#ff3b30" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -217,7 +243,15 @@ const RightPanel: React.FC = () => {
                               {(d as any).diagramJSON.components.map((c: any, i: number) => (
                                 <div key={i} className="uml-diagram-child-row component">
                                   <span className="uml-icon small">{IconFor("component")}</span>
-                                  <div className="uml-diagram-child-title">{c?.name || c?.type || `(id:${c?.id || i})`}</div>
+                                  <div className="uml-diagram-child-title">
+                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                      <div style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{c?.name || `(id:${c?.id || i})`}</div>
+                                      <div className="uml-diagram-child-type">{c?.type}</div>
+                                    </div>
+                                  </div>
+                                  <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                                    <button title="Delete component" onClick={() => setItemDeleteTarget({ diagramId: (d as any).id, kind: 'component', id: c?.id, name: c?.name })} style={{ background: 'transparent', border: 'none', color: '#ff7b7b', cursor: 'pointer' }}>🗑</button>
+                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -228,12 +262,34 @@ const RightPanel: React.FC = () => {
                           <>
                             <div className="uml-diagram-section">Associations</div>
                             <div className="uml-diagram-list">
-                              {(d as any).diagramJSON.associations.map((a: any, i: number) => (
-                                <div key={i} className="uml-diagram-child-row association">
-                                  <span className="uml-icon small">{IconFor("association")}</span>
-                                  <div className="uml-diagram-child-title">{a?.name || a?.type || `(id:${a?.id || i})`}</div>
-                                </div>
-                              ))}
+                              {(d as any).diagramJSON.associations.map((a: any, i: number) => {
+                                // resolve source/target names from the components list
+                                const comps = Array.isArray((d as any).diagramJSON?.components) ? (d as any).diagramJSON.components : [];
+                                const resolveName = (idOrRef: any) => {
+                                  if (!idOrRef) return '';
+                                  const id = typeof idOrRef === 'string' ? idOrRef : (idOrRef?.id ?? idOrRef?.sourceId ?? idOrRef?.targetId);
+                                  const found = comps.find((c: any) => (c?.id ?? c) === id);
+                                  return found ? (found.name ?? found.type ?? String(id)) : String(id ?? '');
+                                };
+                                const srcName = resolveName(a?.sourceId ?? a?.source ?? a?.source?.id);
+                                const tgtName = resolveName(a?.targetId ?? a?.target ?? a?.target?.id);
+                                const assocTypeLabel = a?.assocType ?? a?.kind ?? a?.type ?? a?.name ?? '';
+                                return (
+                                  <div key={i} className="uml-diagram-child-row association">
+                                    <span className="uml-icon small">{IconFor("association")}</span>
+                                    <div className="uml-diagram-child-title" style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                        <div style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{a?.name || `(${assocTypeLabel || 'assoc'})`}</div>
+                                        <div style={{ marginLeft: 'auto', fontSize: 11, color: '#9fdfe8' }}>{assocTypeLabel}</div>
+                                      </div>
+                                      <div style={{ fontSize: 12, color: '#cfeff3' }}>{srcName} → {tgtName}</div>
+                                    </div>
+                                    <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                                      <button title="Delete association" onClick={() => setItemDeleteTarget({ diagramId: (d as any).id, kind: 'association', id: a?.id, name: a?.name })} style={{ background: 'transparent', border: 'none', color: '#ff7b7b', cursor: 'pointer' }}>🗑</button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </>
                         )}
@@ -264,6 +320,91 @@ const RightPanel: React.FC = () => {
           onCreate={handleModalCreate}
           onSave={handleSaveDiagram}
         />
+      )}
+      {diagramDeleteTarget && (
+        <Modal title={`Delete diagram`} onClose={() => setDiagramDeleteTarget(null)}>
+          <div style={{ padding: 8 }}>
+            <div style={{ marginBottom: 12 }}>This will permanently delete the selected diagram and all its components and associations. This action cannot be undone. Continue?</div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn ghost" onClick={() => setDiagramDeleteTarget(null)}>Cancel</button>
+              <button className="btn" style={{ background: '#b71c1c', color: '#fff' }} onClick={async () => {
+                setDiagramDeleting(true);
+                try {
+                  const id = diagramDeleteTarget as string;
+                  if (!id) return;
+                  // remove session from storage
+                  DiagramSession.removeById(id);
+                  // remove from project
+                  if (projCtx.project) {
+                    projCtx.project.removeDiagramById(id);
+                    try { await projCtx.saveProject?.(); } catch (e) { /* ignore */ }
+                  }
+                  // if this was the open session, close it
+                  if (diagCtx.currentSession?.id === id) {
+                    diagCtx.closeCurrent?.();
+                  }
+                  // notify listeners
+                  try { window.dispatchEvent(new CustomEvent('uml:session-updated', { detail: { deletedDiagramId: id } })); } catch {}
+                } catch (err) {
+                  // eslint-disable-next-line no-console
+                  console.warn('RightPanel: delete diagram failed', err);
+                } finally {
+                  setDiagramDeleting(false);
+                  setDiagramDeleteTarget(null);
+                  setProjectVersion((v) => v + 1);
+                }
+              }}>{diagramDeleting ? 'Deleting...' : 'Delete'}</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+      {itemDeleteTarget && (
+        <Modal title={`Delete ${itemDeleteTarget.kind}`} onClose={() => setItemDeleteTarget(null)}>
+          <div style={{ padding: 8 }}>
+            <div style={{ marginBottom: 12 }}>This will permanently delete the selected {itemDeleteTarget.kind}. Do you want to continue?</div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn ghost" onClick={() => setItemDeleteTarget(null)}>Cancel</button>
+              <button className="btn" style={{ background: '#b71c1c', color: '#fff' }} onClick={async () => {
+                setItemDeleting(true);
+                try {
+                  const targ = itemDeleteTarget;
+                  if (!targ) return;
+                  const s = DiagramSession.loadById(targ.diagramId);
+                  if (!s) return;
+                  // remove component and any associations referencing it
+                  if (targ.kind === 'component') {
+                    s.diagramJSON.components = (s.diagramJSON.components || []).filter((c: any) => (c?.id ?? c) !== targ.id);
+                    s.diagramJSON.associations = (s.diagramJSON.associations || []).filter((a: any) => ((a?.sourceId) ?? a?.source) !== targ.id && ((a?.targetId) ?? a?.target) !== targ.id);
+                  } else {
+                    s.diagramJSON.associations = (s.diagramJSON.associations || []).filter((a: any) => (a?.id ?? a) !== targ.id);
+                  }
+                  s.touch();
+                  s.saveToLocalStorage();
+                  // if this session is currently open in editor, update context
+                  if (diagCtx.currentSession?.id === s.id) {
+                    diagCtx.updateCurrent?.({ diagramJSON: s.diagramJSON });
+                  }
+                  // update project entry and persist
+                  if (projCtx.project) {
+                    const idx = projCtx.project.diagrams.findIndex((d: any) => (d as any).id === s.id);
+                    if (idx >= 0) {
+                      projCtx.project.diagrams[idx] = s as any;
+                      try { await projCtx.saveProject?.(); } catch {}
+                    }
+                  }
+                  try { window.dispatchEvent(new CustomEvent('uml:session-updated', { detail: s.toJSON() })); } catch {}
+                } catch (err) {
+                  // eslint-disable-next-line no-console
+                  console.warn('RightPanel: delete item failed', err);
+                } finally {
+                  setItemDeleting(false);
+                  setItemDeleteTarget(null);
+                  setProjectVersion((v) => v + 1);
+                }
+              }}>{itemDeleting ? 'Deleting...' : 'Delete'}</button>
+            </div>
+          </div>
+        </Modal>
       )}
       {showDeleteConfirm && (
         <Modal title="Delete project" onClose={() => setShowDeleteConfirm(false)}>
