@@ -39,6 +39,10 @@ export const LeftPanel: React.FC<Props> = ({ canvasModel, existing = [], onAdd, 
   const [assocTarget, setAssocTarget] = useState<string | null>(null);
 
   const diagCtx = useDiagramContext();
+  // The diagram 'name' is stored at the session level (DiagramSession.name).
+  // Fall back to diagramJSON.name only if the session name is not present.
+  const DiagName = diagCtx.currentSession?.name ?? diagCtx.currentSession?.diagramJSON?.name ?? null;
+  console.debug("LeftPanel: currentSession ->", diagCtx.currentSession?.toJSON?.() ?? diagCtx.currentSession);
   const diagType = diagCtx.currentSession?.diagramJSON?.type ?? null;
   const projectCtx = useProjectContext();
   const navigate = useNavigate();
@@ -160,7 +164,7 @@ export const LeftPanel: React.FC<Props> = ({ canvasModel, existing = [], onAdd, 
     <div className="uml-leftpanel" style={{ width }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <button onClick={() => setShowBackConfirm(true)} style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid rgba(0,200,255,0.06)', background: 'transparent', color: '#00e5ff' }}>← Back</button>
-        {/* <div style={{ color: '#ffffff', fontWeight: 700 }}>Editor</div> */}
+        <div style={{ color: '#00e5ffa7', fontWeight: 700 }}>{`${DiagName ?? ''}`}</div>
         <div style={{ width: 48 }} />
       </div>
 
