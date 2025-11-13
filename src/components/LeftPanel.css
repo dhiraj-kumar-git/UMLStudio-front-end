@@ -1,0 +1,46 @@
+.uml-leftpanel {
+  position: fixed;
+  left: 48px; /* shifted right to make room for the left strip */
+  top: 0;
+  bottom: 0;
+  width: 360px;
+  padding: 12px;
+  background: #141b27e6;
+  color: #00e5ff;
+  border-right: 2px solid rgba(148, 163, 184, 0.15);
+  overflow-y: auto;
+
+  overflow-x: hidden; /* prevent horizontal scroll when inputs stretch */
+  z-index: 40;
+}
+
+/* ensure inputs respect container width including padding/border */
+.uml-leftpanel, .uml-leftpanel * {
+  box-sizing: border-box;
+}
+
+.uml-leftpanel h3 { margin-top: 2px; color: #00e5ff; }
+
+.uml-leftpanel .uml-tool-section { margin-bottom: 12px; }
+
+.uml-leftpanel input[type="text"], .uml-leftpanel input[type="number"], .uml-leftpanel select {
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(0,200,255,0.08);
+  color: #00e5ff;
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.uml-leftpanel button { background: transparent; border: 1px solid rgba(0,200,255,0.06); color: #00e5ff; padding: 8px; border-radius: 6px; cursor: pointer; }
+
+.uml-leftpanel .uml-selection { margin-top: 16px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.02); }
+
+/* Resizer handle on the right edge */
+.uml-leftpanel-resizer { position: absolute; right: -6px; top: 0; bottom: 0; width: 12px; cursor: col-resize; z-index: 60; }
+
+
+.uml-leftpanel option {
+    background-color:  rgb(5, 15, 18);
+    border:none;
+    border-radius: 4px;
+}

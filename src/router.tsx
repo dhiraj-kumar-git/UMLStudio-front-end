@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { HomePage } from "./pages/HomePage";
+import EditorPage from "./pages/EditorPage";
 import { useAuthContext } from "./context/AuthContext";
 
 export const AppRouter: React.FC = () => {
@@ -18,6 +19,8 @@ export const AppRouter: React.FC = () => {
           path="/home"
           element={token ? <HomePage /> : <Navigate to="/login" />}
         />
+        {/* <Route path="/editor" element={token ? <EditorPage /> : <Navigate to="/login" />} /> */}
+                <Route path="/editor" element={ <EditorPage />} />
       </Routes>
     </BrowserRouter>
   );

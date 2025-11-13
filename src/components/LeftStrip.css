@@ -1,0 +1,88 @@
+.uml-leftstrip {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 48px;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 50;
+  display: flex;
+  align-items: stretch;
+}
+
+.uml-leftstrip-inner {
+  width: 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 6px;
+  align-items: center;
+}
+
+.ls-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.ls-pdf { background: #d93025; color: #fff; }
+.ls-svg { background: #00c8ff; color: #000; }
+.ls-canvas-pdf, .ls-canvas-svg { background: #000; color: #00c8ff; }
+.ls-import, .ls-export { background: #fff; color: #000; }
+.ls-undo, .ls-redo { background: #414141ae; color: #fff; border: 1px solid #00c8ff88; }
+.ls-save { background: #818cf8; color: #fff; }
+
+/* grid button states: when ON show black background with cyan icon; when OFF show cyan bg with black icon */
+.ls-grid.on { background: #000; color: #00c8ff; border: 1px solid #00c8ff66; }
+.ls-grid.off { background: #00c8ff; color: #000; border: 1px solid #00000033; }
+
+.ls-sep { height: 1px; width: 28px; background: rgba(255,255,255,0.04); margin: 6px 0; }
+.ls-spacer { flex: 1 1 auto; }
+
+.ls-btn svg { display: block; }
+
+/* Stylish tooltip for left strip buttons */
+.ls-btn { position: relative; }
+.ls-btn::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 46px;
+  top: 50%;
+  transform: translateY(-50%) translateX(-6px);
+  background: rgba(0,0,0,0.85);
+  color: #fff;
+  padding: 6px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  font-size: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+.ls-btn::before {
+  content: '';
+  position: absolute;
+  left: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-right: 6px solid rgba(0,0,0,0.85);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.ls-btn:hover::after,
+.ls-btn:focus::after {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+.ls-btn:hover::before,
+.ls-btn:focus::before { opacity: 1; }
