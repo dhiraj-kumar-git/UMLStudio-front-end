@@ -20,6 +20,78 @@ function loadScript(src: string): Promise<void> {
 }
 
 export default class Exporter {
+  /**
+   * Create a user-friendly JSON representation of a DiagramSession or raw diagramJSON.
+   * The exported JSON omits persistent ids and instead references components by index
+   * to make it easier for users to edit. It includes component geometry, type, name,
+   * attributes, methods and association metadata (sourceIndex/targetIndex).
+   */
+  static createUserFriendlyJSON(sessionOrDiagramJSON: any) {
+    const s = sessionOrDiagramJSON && sessionOrDiagramJSON.diagramJSON ? sessionOrDiagramJSON.diagramJSON : sessionOrDiagramJSON || {};
+    const comps: any[] = Array.isArray(s.components) ? s.components : [];
+    const assocs: any[] = Array.isArray(s.associations) ? s.associations : [];
+
+    const outComps = comps.map((c: any) => ({
+      type: c.type ?? c.componentType ?? 'component',
+      name: c.name ?? '',
+      x: c.x ?? 0,
+      y: c.y ?? 0,
+      width: c.width ?? undefined,
+      height: c.height ?? undefined,
+      attributes: c.attributes ?? undefined,
+      methods: c.methods ?? undefined,
+      // include any custom props that are useful to recreate the component
+      props: c.props ?? undefined,
+    }));
+
+    const outAssocs = assocs.map((a: any) => {
+      // try to resolve source/target to indices (if ids exist) otherwise copy whatever references are present
+      let sourceIndex: number | null = null;
+      let targetIndex: number | null = null;
+      if (typeof a.sourceId === 'string' || typeof a.source === 'string') {
+        const sid = a.sourceId ?? a.source;
+        const idx = comps.findIndex((c: any) => (c.id ?? c) === sid);
+        if (idx >= 0) sourceIndex = idx;
+      }
+      if (typeof a.targetId === 'string' || typeof a.target === 'string') {
+        const tid = a.targetId ?? a.target;
+        const idx = comps.findIndex((c: any) => (c.id ?? c) === tid);
+        if (idx >= 0) targetIndex = idx;
+      }
+      // fallback: some associations may inline source/target objects; try to match by id
+      if (sourceIndex === null && a.source && typeof a.source === 'object' && a.source.id) {
+        const idx = comps.findIndex((c: any) => (c.id ?? c) === a.source.id);
+        if (idx >= 0) sourceIndex = idx;
+      }
+      if (targetIndex === null && a.target && typeof a.target === 'object' && a.target.id) {
+        const idx = comps.findIndex((c: any) => (c.id ?? c) === a.target.id);
+        if (idx >= 0) targetIndex = idx;
+      }
+
+      return {
+        type: a.type ?? a.assocType ?? a.kind ?? 'association',
+        name: a.name ?? a.label ?? undefined,
+        sourceIndex: sourceIndex,
+        targetIndex: targetIndex,
+        // include cardinalities and other metadata
+        cardinalitySource: a.cardinalitySource ?? a.cs ?? undefined,
+        cardinalityTarget: a.cardinalityTarget ?? a.ct ?? undefined,
+        extra: (a.extra !== undefined) ? a.extra : undefined,
+      };
+    });
+
+    const out = {
+      exportedAt: new Date().toISOString(),
+      diagramName: s.name ?? s.title ?? undefined,
+      diagramType: s.type ?? undefined,
+      components: outComps,
+      associations: outAssocs,
+      // keep description if present
+      description: s.description ?? undefined,
+    };
+    return out;
+  }
+
   // Generate a simple SVG string for a diagram JSON.
   // The renderer is intentionally simple: it draws rects/ellipses/lines and text
   // based on component bounding boxes and association endpoints.

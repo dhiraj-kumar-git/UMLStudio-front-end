@@ -19,6 +19,7 @@ import InterfaceComponent from "../models/InterfaceComponent";
 import { useProjectContext } from "../context/ProjectContext";
 import { useDiagramContext } from "../context/DiagramContext";
 import ProjectDiagramModal from "../components/ProjectDiagramModal";
+import TestEditorPanel from "../components/TestEditorPanel";
 
 export const EditorPage: React.FC = () => {
   const model = useMemo(() => new CanvasModel({ cellSize: 48, majorEvery: 8, initialScale: 1 }), []);
@@ -319,22 +320,26 @@ export const EditorPage: React.FC = () => {
             if (!sel || sel.kind === null) return;
             if (sel.kind === 'component') {
               const id = (sel as any).id as string;
-              // remove component from state and any associations referencing it
-              setComponents((prev) => prev.filter((c) => (c as any).id !== id));
-              setAssociations((prev) => prev.filter((a) => ((a as any).sourceId ?? (a as any).source) !== id && ((a as any).targetId ?? (a as any).target) !== id && ((a as any).id ?? '') !== id));
+              // build new arrays based on current state
+              const newComps = components.filter((c) => (c as any).id !== id);
+              const newAssocs = associations.filter((a) => ((a as any).sourceId ?? (a as any).source) !== id && ((a as any).targetId ?? (a as any).target) !== id && ((a as any).id ?? '') !== id);
+              // update runtime state
+              setComponents(newComps);
+              setAssociations(newAssocs);
               // clear controller selection
               try { controller.clearSelection(); } catch {}
-              // persist immediately
+              // persist
               try {
-                const diagramJSON = { components: components.map((c) => (c as any).toJSON ? (c as any).toJSON() : (c as any)), associations: associations.map((a) => (a as any).toJSON ? (a as any).toJSON() : (a as any)), type: diagCtx.currentSession?.diagramJSON?.type };
+                const diagramJSON = { components: newComps.map((c) => (c as any).toJSON ? (c as any).toJSON() : (c as any)), associations: newAssocs.map((a) => (a as any).toJSON ? (a as any).toJSON() : (a as any)), type: diagCtx.currentSession?.diagramJSON?.type };
                 diagCtx.updateCurrent?.({ diagramJSON });
               } catch {}
             } else if (sel.kind === 'association') {
               const id = (sel as any).id as string;
-              setAssociations((prev) => prev.filter((a) => ((a as any).id ?? a) !== id));
+              const newAssocs = associations.filter((a) => ((a as any).id ?? a) !== id);
+              setAssociations(newAssocs);
               try { controller.clearSelection(); } catch {}
               try {
-                const diagramJSON = { components: components.map((c) => (c as any).toJSON ? (c as any).toJSON() : (c as any)), associations: associations.map((a) => (a as any).toJSON ? (a as any).toJSON() : (a as any)), type: diagCtx.currentSession?.diagramJSON?.type };
+                const diagramJSON = { components: components.map((c) => (c as any).toJSON ? (c as any).toJSON() : (c as any)), associations: newAssocs.map((a) => (a as any).toJSON ? (a as any).toJSON() : (a as any)), type: diagCtx.currentSession?.diagramJSON?.type };
                 diagCtx.updateCurrent?.({ diagramJSON });
               } catch {}
             }
@@ -448,6 +453,8 @@ export const EditorPage: React.FC = () => {
       }} />
 
       <RightPanel />
+
+  <TestEditorPanel />
 
   <div style={{ position: 'fixed', left: `calc(var(--left-panel-width,360px) + 48px)`, right: 'var(--right-panel-width,320px)', top: 0, bottom: 0, background: '#f7f7fb' }}>
         <InfiniteCanvas model={model} background="#fff" showControls={true} components={components} associations={associations} controller={controller} />

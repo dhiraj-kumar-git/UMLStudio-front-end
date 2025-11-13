@@ -45,6 +45,8 @@ export const LeftPanel: React.FC<Props> = ({ canvasModel, existing = [], onAdd, 
   const [showBackConfirm, setShowBackConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // no in-panel editor here; TestEditorPanel handles export/import UI
+
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
       if (!isResizing) return;
@@ -565,6 +567,7 @@ export const LeftPanel: React.FC<Props> = ({ canvasModel, existing = [], onAdd, 
           </div>
         </Modal>
       )}
+      {/* Test editor panel is handled by a separate component */}
     </div>
   );
 };

@@ -178,7 +178,7 @@ const RightPanel: React.FC = () => {
                 <i className="fas fa-chevron-down" style={{ color: '#00c8ff', transform: projectCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 120ms' }} aria-hidden />
               </div>
               <div style={{ fontSize: 16, fontWeight: 600 }}>{project.name || "(untitled)"}</div>
-              <div style={{ fontSize: 12, color: "#9fcbd6" }}>{project.description}</div>
+              <div style={{ fontSize: 12, color: "#9fcbd6" }}>{project.description|| ''}</div>
             </div>
         <div style={{ display: "flex", gap: 8, alignItems: 'center' }}>
           <button className="btn-delete" title="Delete project" onClick={() => setShowDeleteConfirm(true)}>
