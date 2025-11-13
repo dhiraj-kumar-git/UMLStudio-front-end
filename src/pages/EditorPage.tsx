@@ -230,18 +230,21 @@ export const EditorPage: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
     const trySelect = (kind: string, id: string | undefined, attemptsLeft = 8) => {
+      try { console.log('EditorPage: trySelect', { kind, id, attemptsLeft }); } catch {}
       if (cancelled) return;
       if (!id) return;
       // find component or association in current runtime arrays
       if (kind === 'component') {
         const comp = components.find((c) => (c as any).id === id);
         if (comp) {
+          try { console.log('EditorPage: trySelect -> found component', id); } catch {}
           controller.setSelection({ kind: 'component', id, component: comp as any });
           return;
         }
       } else if (kind === 'association') {
         const assoc = associations.find((a) => (a as any).id === id);
         if (assoc) {
+          try { console.log('EditorPage: trySelect -> found association', id); } catch {}
           controller.setSelection({ kind: 'association', id, association: assoc as any });
           return;
         }
@@ -250,6 +253,8 @@ export const EditorPage: React.FC = () => {
       // retry after a short delay to allow revive to finish.
       if (attemptsLeft > 0) {
         setTimeout(() => trySelect(kind, id, attemptsLeft - 1), 150);
+      } else {
+        try { console.log('EditorPage: trySelect -> giving up', { kind, id }); } catch {}
       }
     };
 
@@ -257,15 +262,17 @@ export const EditorPage: React.FC = () => {
       try {
         const detail = (ev as CustomEvent).detail ?? {};
         const { kind, id, diagramId } = detail;
+        try { console.log('EditorPage: received uml:select', { kind, id, diagramId, currentSession: diagCtx.currentSession?.id }); } catch {}
         // If a different diagram is requested, open it first and then select.
         if (diagramId && diagCtx.currentSession?.id !== diagramId) {
+          try { console.log('EditorPage: selecting - opening diagram first', diagramId); } catch {}
           diagCtx.openSessionById(diagramId);
           // give editor a moment to revive the session, then attempt selection
           setTimeout(() => trySelect(kind, id), 220);
         } else {
           trySelect(kind, id);
         }
-      } catch (err) {}
+      } catch (err) { try { console.warn('EditorPage: onSelect error', err); } catch {} }
     };
 
     window.addEventListener('uml:select', onSelect as EventListener);

@@ -243,13 +243,15 @@ const RightPanel: React.FC = () => {
                               {(d as any).diagramJSON.components.map((c: any, i: number) => (
                                 <div key={i} className="uml-diagram-child-row component" style={{ cursor: 'pointer' }} onClick={() => {
                                   try {
+                                    const detail = { kind: 'component', id: c?.id, diagramId: (d as any).id };
+                                    try { console.log('RightPanel: dispatch select ->', detail); } catch {}
                                     // if this diagram isn't open, open it first then select
                                     if (diagCtx.currentSession?.id !== (d as any).id) {
                                       diagCtx.openSessionById((d as any).id);
                                       // dispatch selection after a short delay to allow editor to revive
-                                      setTimeout(() => window.dispatchEvent(new CustomEvent('uml:select', { detail: { kind: 'component', id: c?.id, diagramId: (d as any).id } })), 220);
+                                      setTimeout(() => window.dispatchEvent(new CustomEvent('uml:select', { detail })), 220);
                                     } else {
-                                      window.dispatchEvent(new CustomEvent('uml:select', { detail: { kind: 'component', id: c?.id, diagramId: (d as any).id } }));
+                                      window.dispatchEvent(new CustomEvent('uml:select', { detail }));
                                     }
                                   } catch (err) {}
                                 }}>
@@ -288,11 +290,13 @@ const RightPanel: React.FC = () => {
                                 return (
                                   <div key={i} className="uml-diagram-child-row association" style={{ cursor: 'pointer' }} onClick={() => {
                                     try {
+                                      const detail = { kind: 'association', id: a?.id, diagramId: (d as any).id };
+                                      try { console.log('RightPanel: dispatch select ->', detail); } catch {}
                                       if (diagCtx.currentSession?.id !== (d as any).id) {
                                         diagCtx.openSessionById((d as any).id);
-                                        setTimeout(() => window.dispatchEvent(new CustomEvent('uml:select', { detail: { kind: 'association', id: a?.id, diagramId: (d as any).id } })), 220);
+                                        setTimeout(() => window.dispatchEvent(new CustomEvent('uml:select', { detail })), 220);
                                       } else {
-                                        window.dispatchEvent(new CustomEvent('uml:select', { detail: { kind: 'association', id: a?.id, diagramId: (d as any).id } }));
+                                        window.dispatchEvent(new CustomEvent('uml:select', { detail }));
                                       }
                                     } catch (err) {}
                                   }}>
