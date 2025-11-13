@@ -19,8 +19,7 @@ export const AppRouter: React.FC = () => {
           path="/home"
           element={token ? <HomePage /> : <Navigate to="/login" />}
         />
-        {/* <Route path="/editor" element={token ? <EditorPage /> : <Navigate to="/login" />} /> */}
-                <Route path="/editor" element={ <EditorPage />} />
+        <Route path="/editor" element={token ? <EditorPage /> : <Navigate to="/login" />} />
       </Routes>
     </BrowserRouter>
   );

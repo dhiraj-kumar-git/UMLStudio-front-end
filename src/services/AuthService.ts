@@ -1,7 +1,9 @@
+import axios from "axios";
+
 export interface LoginResponse {
   token: string;
-  username: string;
-  name: string;
+  message: string;
+  status: string;
 }
 
 export interface RegisterPayload {
@@ -11,59 +13,30 @@ export interface RegisterPayload {
   confirmPassword: string;
 }
 
-interface DummyUser {
-  username: string;
-  password: string;
-  name: string;
-}
-
 export class AuthService {
-  private users: DummyUser[] = [
-    { username: "alice", password: "test123", name: "Alice Johnson" },
-    { username: "bob", password: "test123", name: "Bob Smith" },
-    { username: "charlie", password: "test123", name: "Charlie Brown" },
-  ];
 
   async login(username: string, password: string): Promise<LoginResponse> {
-    console.log("Authenticating locally...");
-
-    await new Promise((resolve) => setTimeout(resolve, 600));
-
-    const user = this.users.find(
-      (u) => u.username === username && u.password === password
+   
+    const { data: user } = await axios.post<LoginResponse>(
+      "https://uml-studio.onrender.com/auth/login",
+      { username, password }
     );
 
-    if (!user) {
-      throw new Error("Invalid username or password");
-    }
-
-    const fakeToken = btoa(`${username}:${Date.now()}`);
-
     return {
-      token: fakeToken,
-      username: user.username,
-      name: user.name,
+      token: user.token,
+      message: user.message,
+      status: user.status
     };
   }
 
   async register(data: RegisterPayload): Promise<void> {
-    console.log("Registering new user locally...");
-    await new Promise((resolve) => setTimeout(resolve, 600));
-
-    if (data.password !== data.confirmPassword) {
-      throw new Error("Passwords do not match");
-    }
-
-    const exists = this.users.find((u) => u.username === data.username);
-    if (exists) {
+    const { data: exists } = await axios.post(
+      "https://uml-studio.onrender.com/auth/register",
+      data
+    );
+    if (exists.status === "FAILED") {
       throw new Error("Username already exists");
     }
-
-    this.users.push({
-      username: data.username,
-      password: data.password,
-      name: data.name,
-    });
 
     console.log("User registered:", data.username);
   }

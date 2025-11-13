@@ -19,9 +19,8 @@ export class AuthController {
       setError(null);
       const data = await this.authService.login(username, password);
       localStorage.setItem("jwt", data.token);
-      localStorage.setItem("username", data.username);
-      localStorage.setItem("name", data.name);
-      toast.success(`Welcome, ${data.name}!`);
+      localStorage.setItem("username", username);
+      toast.success(`Welcome, ${username}!`);
       setToken(data.token);
       navigate("/home");
     } catch (error: any) {
