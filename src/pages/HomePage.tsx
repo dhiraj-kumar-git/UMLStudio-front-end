@@ -5,7 +5,7 @@ import { useAuthContext } from "../context/AuthContext";
 export const HomePage: React.FC = () => {
   const { logout } = useAuthContext();
   const navigate = useNavigate();
-  const name = localStorage.getItem("name") || "Guest";
+  const name = localStorage.getItem("username") || "Guest";
 
   const handleLogout = () => {
     logout();
