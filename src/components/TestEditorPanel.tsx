@@ -10,6 +10,7 @@ const TestEditorPanel: React.FC = () => {
   const [content, setContent] = useState('');
   const [editable, setEditable] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [entered, setEntered] = useState(false);
 
   useEffect(() => {
     const onOpen = (ev: Event) => {
@@ -20,6 +21,9 @@ const TestEditorPanel: React.FC = () => {
         setEditable(Boolean(d.editable));
         setError(null);
         setOpen(true);
+        // trigger enter animation on next tick
+        setEntered(false);
+        setTimeout(() => setEntered(true), 20);
       } catch (err) {}
     };
     window.addEventListener('uml:open-editor-panel', onOpen as EventListener);
@@ -30,8 +34,27 @@ const TestEditorPanel: React.FC = () => {
 
   if (!open) return null;
 
+  const leftPos = 48; // left strip width
+  const panelWidth = `calc(var(--left-panel-width,360px) - 16px)`;
+  const baseStyle: React.CSSProperties = {
+    position: 'fixed',
+    left: `${leftPos}px`,
+    top: 12,
+    width: panelWidth,
+    bottom: 12,
+    background: '#041018',
+    color: '#dff8fb',
+    borderRadius: 8,
+    padding: 12,
+    zIndex: 1200,
+    boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
+    transform: entered ? 'translateX(0)' : 'translateX(-12px)',
+    opacity: entered ? 1 : 0,
+    transition: 'transform 220ms ease, opacity 220ms ease',
+  };
+
   return (
-    <div style={{ position: 'fixed', left: 'calc(var(--left-panel-width,360px) + 12px)', top: 12, width: 520, bottom: 12, background: '#041018', color: '#dff8fb', borderRadius: 8, padding: 12, zIndex: 1200, boxShadow: '0 8px 30px rgba(0,0,0,0.5)' }}>
+    <div style={baseStyle}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ fontWeight: 700 }}>{mode === 'export' ? 'Export (read-only)' : 'Import (paste JSON)'}</div>
         <div style={{ display: 'flex', gap: 8 }}>

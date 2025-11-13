@@ -319,7 +319,8 @@ export const EditorPage: React.FC = () => {
             const sel = selection;
             if (!sel || sel.kind === null) return;
             if (sel.kind === 'component') {
-              const id = (sel as any).id as string;
+              const id = (sel as any).id ?? (sel as any).component?.id ?? (sel as any).component?.props?.id;
+              if (!id) return;
               // build new arrays based on current state
               const newComps = components.filter((c) => (c as any).id !== id);
               const newAssocs = associations.filter((a) => ((a as any).sourceId ?? (a as any).source) !== id && ((a as any).targetId ?? (a as any).target) !== id && ((a as any).id ?? '') !== id);
@@ -334,7 +335,8 @@ export const EditorPage: React.FC = () => {
                 diagCtx.updateCurrent?.({ diagramJSON });
               } catch {}
             } else if (sel.kind === 'association') {
-              const id = (sel as any).id as string;
+              const id = (sel as any).id ?? (sel as any).association?.id;
+              if (!id) return;
               const newAssocs = associations.filter((a) => ((a as any).id ?? a) !== id);
               setAssociations(newAssocs);
               try { controller.clearSelection(); } catch {}
