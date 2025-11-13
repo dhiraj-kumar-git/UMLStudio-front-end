@@ -157,6 +157,11 @@ body {
   font-weight: 500;
 }
 
+button:active {
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: 0.3s;
+}
+
 .link-text a:hover {
   text-decoration: underline;
 }
