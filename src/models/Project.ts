@@ -4,7 +4,7 @@ import type { StoredDiagramSession } from "./DiagramSession";
 export type AccessPolicy = "Developer" | "Viewer";
 
 export type ProjectJSON = {
-  id: string;
+  id: string | null;
   name: string;
   description?: string;
   accessPolicy: AccessPolicy;
@@ -19,6 +19,8 @@ export class Project {
   accessPolicy: AccessPolicy;
   createdAt: Date;
   diagrams: DiagramSession[];
+  // whether this project has been saved to the backend and the id is server-assigned
+  private _synced: boolean;
 
   static STORAGE_KEY = "umlstudio.project";
 
@@ -29,6 +31,7 @@ export class Project {
     this.accessPolicy = accessPolicy ?? "Developer";
     this.createdAt = createdAt ?? new Date();
     this.diagrams = [];
+    this._synced = !!id; // if constructed with an id, treat as coming from server
   }
 
   addDiagram(session: DiagramSession) {
@@ -52,9 +55,29 @@ export class Project {
     };
   }
 
+  /**
+   * Payload suitable for save/UPSERT to backend.
+   * If the project has not yet been synced with server, the id will be null
+   * so the backend can assign the canonical id.
+   */
+  toSavePayload(): ProjectJSON {
+    const base = this.toJSON();
+    return Object.assign({}, base, { id: this._synced ? this.id : null });
+  }
+
+  /**
+   * Mark this project as synced with the backend and set canonical id.
+   */
+  markSynced(serverId: string) {
+    if (!serverId) return;
+    this.id = serverId;
+    this._synced = true;
+  }
+
   static fromJSON(json: ProjectJSON) {
-    const p = new Project(json.name, json.description, json.accessPolicy, new Date(json.createdAt), json.id);
+    const p = new Project(json.name, json.description, json.accessPolicy, new Date(json.createdAt), json.id ?? undefined);
     p.diagrams = (json.diagrams || []).map((ds) => DiagramSession.fromJSON(ds));
+    p._synced = true;
     return p;
   }
 

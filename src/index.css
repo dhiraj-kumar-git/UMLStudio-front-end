@@ -171,6 +171,21 @@ button:active {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes fadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-8px) scale(.995); }
+}
+
+/* exit state when navigating away (used on login success) */
+.login-card.exiting {
+  animation: fadeOut 0.42s ease forwards;
+}
+.login-container.exiting {
+  /* slightly fade backdrop during transition to feel smoother */
+  transition: opacity 0.42s ease;
+  opacity: 0.96;
+}
+
 @keyframes fadeInError {
   from { opacity: 0; transform: translateY(-2px); }
   to { opacity: 1; transform: translateY(0); }

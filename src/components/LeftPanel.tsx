@@ -163,7 +163,7 @@ export const LeftPanel: React.FC<Props> = ({ canvasModel, existing = [], onAdd, 
   return (
     <div className="uml-leftpanel" style={{ width }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <button onClick={() => setShowBackConfirm(true)} style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid rgba(0,200,255,0.06)', background: 'transparent', color: '#00e5ff' }}>← Back</button>
+        <button onClick={() => setShowBackConfirm(true)} style={{ maxWidth:100, marginTop:0, minHeight:40, padding: '6px 8px', borderRadius: 6, border: '1px solid rgba(0,200,255,0.06)', background: 'transparent', color: '#00e5ff' }}>← Back</button>
         <div style={{ color: '#00e5ffa7', fontWeight: 700 }}>{`${DiagName ?? ''}`}</div>
         <div style={{ width: 48 }} />
       </div>

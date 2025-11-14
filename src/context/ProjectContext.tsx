@@ -10,6 +10,10 @@ type ProjectContextValue = {
   createProject: (name: string, description?: string, accessPolicy?: "Developer" | "Viewer") => Promise<Project>;
   addDiagramToProject: (session: DiagramSession) => Promise<void>;
   deleteProject: () => Promise<void>;
+  // clear only the in-memory project context without deleting persisted storage
+  clearProjectContext: () => void;
+  // set project state from a full ProjectJSON (used after server save)
+  setProjectFromJSON: (json: any) => void;
 };
 
 const Ctx = createContext<ProjectContextValue | null>(null);
@@ -49,12 +53,19 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const saveProject = async () => {
     if (!project) return;
     try {
-      const payload = project.toJSON();
-      await api.saveProject(payload);
+      const payload = project.toSavePayload();
+      const resp = await api.saveProject(payload as any);
+      // if server returned a canonical projectId, update local project
+      try {
+        const projectId = resp?.projectId ?? resp?.result?.projectId ?? null;
+        if (projectId) {
+          project.markSynced(projectId);
+        }
+      } catch {}
       // also mirror to local store for quick recovery
-      Project.saveToLocalStore(payload);
+      Project.saveToLocalStore(project.toJSON());
       // eslint-disable-next-line no-console
-      console.log("ProjectProvider: saved project ->", payload);
+      console.log("ProjectProvider: saved project ->", project.toJSON(), resp);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.warn("ProjectProvider.saveProject failed", err);
@@ -64,10 +75,22 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const createProject = async (name: string, description?: string, accessPolicy: "Developer" | "Viewer" = "Developer") => {
     const p = new Project(name, description, accessPolicy);
     setProject(p);
-    await api.saveProject(p.toJSON());
-    Project.saveToLocalStore(p.toJSON());
-    // eslint-disable-next-line no-console
-    console.log("ProjectProvider: created project ->", p.toJSON());
+    try {
+      const resp = await api.saveProject(p.toSavePayload() as any);
+      // update id if server provided one
+      try {
+        const projectId = resp?.projectId ?? resp?.result?.projectId ?? null;
+        if (projectId) p.markSynced(projectId);
+      } catch {}
+      Project.saveToLocalStore(p.toJSON());
+      // eslint-disable-next-line no-console
+      console.log("ProjectProvider: created project ->", p.toJSON(), resp);
+    } catch (err) {
+      // fallback: persist locally
+      try { Project.saveToLocalStore(p.toJSON()); } catch {}
+      // eslint-disable-next-line no-console
+      console.warn("ProjectProvider.createProject: remote save failed, persisted locally", err);
+    }
     return p;
   };
 
@@ -97,8 +120,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // ensure state is updated with the mutated project instance
     setProject(current);
     // persist via API
-    await api.saveProject(current.toJSON());
-    Project.saveToLocalStore(current.toJSON());
+  await api.saveProject(current.toSavePayload() as any);
+  Project.saveToLocalStore(current.toJSON());
     // eslint-disable-next-line no-console
     console.log("ProjectProvider: added diagram to project ->", session.toJSON());
   };
@@ -144,13 +167,37 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const clearProjectContext = () => {
+    try {
+      setProject(null);
+      // eslint-disable-next-line no-console
+      console.log("ProjectProvider: cleared project context (non-destructive)");
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("ProjectProvider.clearProjectContext failed", err);
+    }
+  };
+
+  const setProjectFromJSON = (json: any) => {
+    try {
+      const p = Project.fromJSON(json as any);
+      setProject(p);
+      try { Project.saveToLocalStore(p.toJSON()); } catch {}
+      // eslint-disable-next-line no-console
+      console.log("ProjectProvider: set project from JSON ->", p.toJSON());
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("ProjectProvider.setProjectFromJSON failed", err);
+    }
+  };
+
   // auto-save project on unload
   useEffect(() => {
     const onUnload = async () => {
       if (project) {
         try {
-          await api.saveProject(project.toJSON());
-          Project.saveToLocalStore(project.toJSON());
+              await api.saveProject(project.toSavePayload() as any);
+              Project.saveToLocalStore(project.toJSON());
           // eslint-disable-next-line no-console
           console.log("ProjectProvider: auto-saved project on unload ->", project.toJSON());
         } catch (err) {
@@ -181,12 +228,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
               const idx = project.diagrams.findIndex((d) => (d as any).id === sid);
               if (idx >= 0) {
                 project.diagrams[idx] = latest as any;
-                // persist immediately to local store and API
-                const payload = project.toJSON();
-                Project.saveToLocalStore(payload);
+                // persist immediately to local store and API (use save payload so new projects send id=null)
+                const payload = project.toSavePayload();
+                Project.saveToLocalStore(project.toJSON());
                 api.saveProject(payload).catch(() => {});
-                // update state to re-render with fresh object
-                setProject(Project.fromJSON(payload));
               }
             }
           } catch (err) {
@@ -201,7 +246,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return () => window.removeEventListener('uml:session-updated', onSessionUpdated as EventListener);
   }, [project]);
 
-  const val: ProjectContextValue = useMemo(() => ({ project, loadProject, saveProject, createProject, addDiagramToProject, deleteProject }), [project]);
+  const val: ProjectContextValue = useMemo(() => ({ project, loadProject, saveProject, createProject, addDiagramToProject, deleteProject, clearProjectContext, setProjectFromJSON }), [project]);
 
   return <Ctx.Provider value={val}>{children}</Ctx.Provider>;
 };

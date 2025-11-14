@@ -6,6 +6,7 @@ import { useAuthContext } from "../context/AuthContext";
 export const LoginPage: React.FC = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [isExiting, setIsExiting] = useState(false);
   const navigate = useNavigate();
   const { setToken } = useAuthContext();
   const controller = new AuthController();
@@ -28,20 +29,29 @@ export const LoginPage: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const ANIM_DURATION = 420; // ms - match CSS duration
+
+  // navigate wrapper: trigger exit animation then navigate after a short delay
+  const delayedNavigate = (path: string) => {
+    setIsExiting(true);
+    setTimeout(() => navigate(path), ANIM_DURATION);
+  };
+
   const handleLogin = async () => {
     if (!validate()) return;
+    // pass delayedNavigate so AuthController still decides when to navigate
     await controller.handleLogin(
       username,
       password,
       setToken,
-      navigate,
+      delayedNavigate,
       (msg) => setErrors((prev) => ({ ...prev, general: msg }))
     );
   };
 
   return (
-    <div className="login-container">
-      <div className="login-card">
+    <div className={`login-container ${isExiting ? "exiting" : ""}`}>
+      <div className={`login-card ${isExiting ? "exiting" : ""}`}>
         <h2>Welcome Back</h2>
         <p>Login to access your dashboard</p>
 
@@ -79,8 +89,8 @@ export const LoginPage: React.FC = () => {
 
         {errors.general && <p className="input-error-general">{errors.general}</p>}
 
-        <button className="button" onClick={handleLogin}>
-          Login
+        <button className="button" onClick={handleLogin} disabled={isExiting}>
+          {isExiting ? "Logging in..." : "Login"}
         </button>
 
         <div className="link-text">

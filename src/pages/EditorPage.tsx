@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import InfiniteCanvas from "../components/InfiniteCanvas";
 import LeftPanel from "../components/LeftPanel";
 import LeftStrip from "../components/LeftStrip";
@@ -138,6 +139,7 @@ export const EditorPage: React.FC = () => {
   const projectCtx = useProjectContext();
   const diagCtx = useDiagramContext();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const navigate = useNavigate();
   const loadingRef = useRef(false);
   const syncTimerRef = useRef<number | null>(null);
   
@@ -468,7 +470,13 @@ export const EditorPage: React.FC = () => {
           projectExists={!!projectCtx.project}
           defaultProjectName={projectCtx.project?.name}
           defaultProjectDescription={projectCtx.project?.description}
-          onCancel={() => setShowCreateModal(false)}
+          onCancel={() => {
+            setShowCreateModal(false);
+            // If there is no project (user was creating a project), return to home
+            try {
+              if (!projectCtx.project) navigate("/home");
+            } catch (err) {}
+          }}
           onCreate={handleCreateFromModal}
         />
       )}

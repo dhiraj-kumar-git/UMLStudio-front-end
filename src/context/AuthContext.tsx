@@ -17,7 +17,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     else localStorage.removeItem("jwt");
   };
 
-  const logout = () => setToken(null);
+  const logout = () => {
+    // Clear auth token and other local state that should not persist across sessions
+    setToken(null);
+    try {
+      localStorage.removeItem("jwt");
+      localStorage.removeItem("userid");
+      localStorage.removeItem("username");
+      localStorage.removeItem("selectedProjectId");
+      // Remove project and diagram session stores if present
+      localStorage.removeItem("umlstudio.project");
+      localStorage.removeItem("umlstudio.diagram.sessions");
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("AuthContext.logout: failed to clear localStorage", err);
+    }
+  };
 
   return (
     <AuthContext.Provider value={{ token, setToken, logout }}>
